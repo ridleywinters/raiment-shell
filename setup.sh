@@ -46,6 +46,10 @@ function _prepend_to_path() {
 export RUSTUP_HOME="$REPO_ROOT/bin/rustup"
 export CARGO_HOME="$REPO_ROOT/bin/cargo"
 if [ ! -f "$CARGO_HOME/bin/rustup" ]; then
+    echo
+    echo "Installing local tools..."
+    echo "This may take a while, but is only required once."
+    echo 
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -sSf | RUSTUP_INIT_SKIP_PATH_CHECK=yes sh -s -- -y
 fi
 
@@ -58,19 +62,24 @@ unset -f _prepend_to_path
 #==============================================================================
 
 if [ ! -f "$CARGO_HOME/bin/cargo-binstall" ]; then
-    cargo install -y cargo-binstall
+    cargo install cargo-binstall
+    echo 
 fi
 if [ ! -f "$CARGO_HOME/bin/just" ]; then
     cargo binstall -y just
+    echo 
 fi
 if [ ! -f "$CARGO_HOME/bin/deno" ]; then
     cargo binstall -y deno
+    echo 
 fi
 if [ ! -f "$CARGO_HOME/bin/mprocs" ]; then
     cargo binstall -y mprocs
+    echo 
 fi
 if [ ! -f "$CARGO_HOME/bin/watchexec" ]; then
     cargo binstall -y watchexec-cli
+    echo 
 fi
 
 #==============================================================================
