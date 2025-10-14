@@ -58,7 +58,7 @@ unset -f _prepend_to_path
 #==============================================================================
 
 if [ ! -f "$CARGO_HOME/bin/cargo-binstall" ]; then
-    cargo install -y cargo-binstall
+    cargo install cargo-binstall -- -y
 fi
 if [ ! -f "$CARGO_HOME/bin/just" ]; then
     cargo binstall -y just
