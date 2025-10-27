@@ -1,7 +1,10 @@
 SCRIPTS := "${REPO_ROOT}/source/scripts"
 EXPANDED := "${REPO_ROOT}/extern/expanded"
 
-build:
+ensure:
+    mkdir -p ./base/textures
+
+build: ensure
     cd ${REPO_ROOT}/extern && just expand
     @just build-tiny-textures
 
