@@ -55,6 +55,10 @@ source/             - all source code
 
 ## FAQ
 
+#### Why Rust?
+
+I wanted a strongly-typed language as it seems best for refactoring effectively as well as coordinating with a large number of engineers. In my own experience, Rust's tooling is straightforward and helps keep more time spent on the code itself than those tools.
+
 #### Why Bevy?
 
 It is has an active community and is well-documented. Ideally less time will be spent reinventing common game engine subsystems by utilizing Bevy. An eventual project goal is to write a custom voxel-based engine (partly, if not mostly, because that would be enjoyable), the higher priority is to ensure the gameplay goals are met. This means custom code should be deprioritized until then.

@@ -1,11 +1,14 @@
 
-build:
-    cargo build
+ensure:
+
+
+build: ensure
+    cargo build --release
 
 dev:
 
-run:
-
+run: ensure
+    cargo run --release
 
 test:
 
