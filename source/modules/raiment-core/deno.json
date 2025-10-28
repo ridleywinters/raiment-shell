@@ -1,0 +1,30 @@
+{
+    "imports": {
+        "@/": "./src/"
+    },
+    "compilerOptions": {
+        "strict": true,
+        "lib": [
+            "deno.ns",
+            "esnext"
+        ]
+    },
+    "fmt": {
+        "useTabs": false,
+        "indentWidth": 4,
+        "lineWidth": 100
+    },
+    "lint": {
+        "rules": {
+            "tags": [
+                "recommended"
+            ],
+            "exclude": [
+                "require-await",
+                "require-yield",
+                "no-explicit-any",
+                "no-unused-vars"
+            ]
+        }
+    }
+}

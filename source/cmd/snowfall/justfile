@@ -6,5 +6,8 @@ dev:
         "just run && sleep 1"
 
 
+build: 
+    cargo build
+
 run:
     cargo run

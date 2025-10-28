@@ -1,12 +1,15 @@
 SCRIPTS := "${REPO_ROOT}/source/scripts"
 EXPANDED := "${REPO_ROOT}/extern/expanded"
+REPO_ROOT := "${REPO_ROOT}"
 
 ensure:
     mkdir -p ./base/textures
+    mkdir -p ./base/sprites
 
 build: ensure
     cd ${REPO_ROOT}/extern && just expand
     @just build-tiny-textures
+    @just build-content
 
 [private]
 build-tiny-textures:
@@ -18,3 +21,9 @@ build-tiny-textures:
         "{{EXPANDED}}/tiny_textures/pack-3/512x512/Stone/Stone_06-512x512.png" \
         "{{EXPANDED}}/tiny_textures/attribution.meta.md" \
         "64x64" "./base/textures/stone_2.png"
+
+build-content:
+    {{SCRIPTS}}/aseprite_to_png.ts \
+        -i "{{REPO_ROOT}}/source/content/sprites/npc-0001.aseprite" \
+        -o "./base/sprites/npc-0001.png"
+    cp -f "{{REPO_ROOT}}/source/content/sprites/attribution.meta.md" "./base/sprites/npc-0001.meta.md"

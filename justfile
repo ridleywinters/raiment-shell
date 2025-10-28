@@ -9,7 +9,9 @@ demo:
 
 # Builds all projects
 build:
-    echo "TODO"
+    cd source/assets && just build
+    cd source/cmd/fallgray && just build
+    cd source/cmd/snowfall && just build
 
 # Tests all projects
 test:

@@ -3,7 +3,8 @@ use rand::Rng;
 use std::collections::HashMap;
 use std::f32::consts::{E, FRAC_PI_2};
 
-const PLAYER_LIGHT_OFFSET: f32 = 4.0;
+const PLAYER_LIGHT_OFFSET_1: [f32; 3] = [0.0, 1.5, 4.0];
+const PLAYER_LIGHT_OFFSET_2: [f32; 3] = [0.5, -0.5, 4.0];
 const PLAYER_RADIUS: f32 = 8.0 * 0.2;
 
 #[derive(Resource)]
@@ -101,6 +102,7 @@ fn main() {
                 animate_player_light,
                 update_ui,
                 test_stats_input,
+                update_billboards,
             ),
         )
         .run();
@@ -116,6 +118,9 @@ struct Player {
 struct PlayerLight;
 
 #[derive(Component)]
+struct PlayerLight2;
+
+#[derive(Component)]
 struct HealthBar;
 
 #[derive(Component)]
@@ -123,6 +128,9 @@ struct FatigueBar;
 
 #[derive(Component)]
 struct GoldText;
+
+#[derive(Component)]
+struct Billboard;
 
 #[derive(Component)]
 struct LightColorAnimation {
@@ -223,30 +231,8 @@ fn setup_system(
             .translated_by(Vec3::new(4.0, 4.0, 8.0)),
     );
 
-    // PICO-8 palette colors
-    let pico8_colors = [
-        Color::srgb(0.0, 0.0, 0.0),    // Black
-        Color::srgb(0.11, 0.17, 0.33), // Dark blue
-        Color::srgb(0.49, 0.15, 0.35), // Dark purple
-        Color::srgb(0.0, 0.53, 0.33),  // Dark green
-        Color::srgb(0.67, 0.32, 0.21), // Brown
-        Color::srgb(0.37, 0.35, 0.31), // Dark gray
-        Color::srgb(0.76, 0.76, 0.78), // Light gray
-        Color::srgb(1.0, 0.95, 0.91),  // White
-        Color::srgb(1.0, 0.0, 0.3),    // Red
-        Color::srgb(1.0, 0.64, 0.0),   // Orange
-        Color::srgb(1.0, 0.95, 0.27),  // Yellow
-        Color::srgb(0.0, 0.89, 0.21),  // Green
-        Color::srgb(0.16, 0.67, 1.0),  // Blue
-        Color::srgb(0.51, 0.46, 0.61), // Indigo
-        Color::srgb(1.0, 0.47, 0.77),  // Pink
-        Color::srgb(1.0, 0.8, 0.67),   // Peach
-    ];
-
     // Load map from data/map.txt
     let map_content = std::fs::read_to_string("data/map.txt").expect("Failed to read data/map.txt");
-
-    let mut rng = rand::rng();
 
     // Build collision map
     let lines: Vec<&str> = map_content.lines().collect();
@@ -277,24 +263,87 @@ fn setup_system(
                 collision_grid.insert((col as i32, row as i32), true);
             }
 
-            let mesh = match ch {
-                'X' => cube_mesh2.clone(),
-                'x' => cube_mesh.clone(),
-                _ => continue,
-            };
-
             // Position: each cell is 8x8, so multiply by 8
             let x = col as f32 * 8.0;
             let y = row as f32 * 8.0;
 
-            // Pick a random PICO-8 color
-            let color = pico8_colors[rng.random_range(0..pico8_colors.len())];
+            match ch {
+                'X' => {
+                    commands.spawn((
+                        Mesh3d(cube_mesh2.clone()),
+                        MeshMaterial3d(wall_material.clone()),
+                        Transform::from_translation(Vec3::new(x, y, 0.0)),
+                    ));
+                }
+                'x' => {
+                    commands.spawn((
+                        Mesh3d(cube_mesh.clone()),
+                        MeshMaterial3d(wall_material.clone()),
+                        Transform::from_translation(Vec3::new(x, y, 0.0)),
+                    ));
+                }
+                'c' => {
+                    // Spawn a billboarded sprite
+                    let sprite_material = materials.add(StandardMaterial {
+                        base_color_texture: Some(load_image_texture(
+                            &asset_server,
+                            "base/sprites/npc-0001.png",
+                        )),
+                        base_color: Color::WHITE,
+                        alpha_mode: bevy::render::alpha::AlphaMode::Blend,
+                        unlit: false,
+                        cull_mode: None, // Render both sides
+                        ..default()
+                    });
 
-            commands.spawn((
-                Mesh3d(mesh),
-                MeshMaterial3d(wall_material.clone()),
-                Transform::from_translation(Vec3::new(x, y, 0.0)),
-            ));
+                    // Create a vertical plane mesh with flipped UVs
+                    // Normal pointing in X direction makes it vertical (parallel to YZ plane)
+                    use bevy::asset::RenderAssetUsages;
+                    use bevy::mesh::{Indices, PrimitiveTopology};
+
+                    let mut billboard_mesh = Mesh::new(
+                        PrimitiveTopology::TriangleList,
+                        RenderAssetUsages::default(),
+                    );
+
+                    // Vertices for a plane perpendicular to X axis (vertical, 8x8 units in YZ)
+                    let scale = 5.0;
+                    let positions = vec![
+                        [0.0, -scale, -scale], // bottom-left
+                        [0.0, scale, -scale],  // top-left
+                        [0.0, scale, scale],   // top-right
+                        [0.0, -scale, scale],  // bottom-right
+                    ];
+                    billboard_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+
+                    // Normals pointing in +X direction
+                    billboard_mesh
+                        .insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[1.0, 0.0, 0.0]; 4]);
+
+                    // UV coordinates (flipped in Y: 1.0 - original V)
+                    let uvs = vec![
+                        [0.0, 1.0], // top-left -> bottom-left in texture
+                        [1.0, 1.0], // top-right -> bottom-right in texture
+                        [1.0, 0.0], // bottom-right -> top-right in texture
+                        [0.0, 0.0], // bottom-left -> top-left in texture
+                    ];
+                    billboard_mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+
+                    // Indices for two triangles
+                    billboard_mesh.insert_indices(Indices::U32(vec![
+                        0, 1, 2, // first triangle
+                        0, 2, 3, // second triangle
+                    ]));
+
+                    commands.spawn((
+                        Mesh3d(meshes.add(billboard_mesh)),
+                        MeshMaterial3d(sprite_material),
+                        Transform::from_translation(Vec3::new(x, y, scale)),
+                        Billboard,
+                    ));
+                }
+                _ => {}
+            }
         }
     }
 
@@ -329,18 +378,35 @@ fn setup_system(
     commands.spawn((
         PointLight {
             color: Color::WHITE,
-            intensity: 5000000.0,
+            intensity: 1000000.0,
             range: 64.0,
             shadows_enabled: true,
             ..default()
         },
         Transform::from_xyz(
-            player_start_pos.x,
-            player_start_pos.y,
-            player_start_pos.z + PLAYER_LIGHT_OFFSET,
+            player_start_pos.x + PLAYER_LIGHT_OFFSET_1[0],
+            player_start_pos.y + PLAYER_LIGHT_OFFSET_1[1],
+            player_start_pos.z + PLAYER_LIGHT_OFFSET_1[2],
         ),
         PlayerLight, // Marker component to identify this light
         LightColorAnimation::default(),
+    ));
+
+    // Add a second point light that follows the player with no Y offset
+    commands.spawn((
+        PointLight {
+            color: Color::WHITE,
+            intensity: 1000000.0,
+            range: 64.0,
+            shadows_enabled: true,
+            ..default()
+        },
+        Transform::from_xyz(
+            player_start_pos.x + PLAYER_LIGHT_OFFSET_2[0],
+            player_start_pos.y + PLAYER_LIGHT_OFFSET_2[1],
+            player_start_pos.z + PLAYER_LIGHT_OFFSET_2[2],
+        ),
+        PlayerLight2,
     ));
 }
 
@@ -505,6 +571,32 @@ fn test_stats_input(input: Res<ButtonInput<KeyCode>>, mut stats: ResMut<PlayerSt
     }
 }
 
+fn update_billboards(
+    camera_query: Query<&Transform, With<Camera3d>>,
+    mut billboard_query: Query<&mut Transform, (With<Billboard>, Without<Camera3d>)>,
+) {
+    if let Ok(camera_transform) = camera_query.single().into() {
+        let camera_pos = camera_transform.translation;
+
+        for mut billboard_transform in billboard_query.iter_mut() {
+            let billboard_pos = billboard_transform.translation;
+
+            // Calculate direction from billboard to camera (in XY plane)
+            let to_camera = Vec2::new(
+                camera_pos.x - billboard_pos.x,
+                camera_pos.y - billboard_pos.y,
+            );
+
+            // The plane's normal starts pointing in X direction (Dir3::X)
+            // Calculate angle around Z axis to rotate the normal to face the camera
+            let angle = to_camera.y.atan2(to_camera.x);
+
+            // Rotate around Z axis so the plane normal points toward camera
+            billboard_transform.rotation = Quat::from_rotation_z(angle);
+        }
+    }
+}
+
 fn camera_control_system(
     time: Res<Time>,
     input: Res<ButtonInput<KeyCode>>,
@@ -648,12 +740,30 @@ fn camera_control_system(
 fn update_player_light(
     player_query: Query<&Transform, With<Player>>,
     mut light_query: Query<&mut Transform, (With<PlayerLight>, Without<Player>)>,
+    mut light2_query: Query<
+        &mut Transform,
+        (With<PlayerLight2>, Without<Player>, Without<PlayerLight>),
+    >,
 ) {
     if let Ok(player_transform) = player_query.single() {
+        // Update first light with Y offset
         if let Ok(mut light_transform) = light_query.single_mut() {
-            // Position the light slightly above the player
-            light_transform.translation =
-                player_transform.translation + Vec3::new(0.0, 0.0, PLAYER_LIGHT_OFFSET);
+            light_transform.translation = player_transform.translation
+                + Vec3::new(
+                    PLAYER_LIGHT_OFFSET_1[0],
+                    PLAYER_LIGHT_OFFSET_1[1],
+                    PLAYER_LIGHT_OFFSET_1[2],
+                );
+        }
+
+        // Update second light with no Y offset
+        if let Ok(mut light2_transform) = light2_query.single_mut() {
+            light2_transform.translation = player_transform.translation
+                + Vec3::new(
+                    PLAYER_LIGHT_OFFSET_2[0],
+                    PLAYER_LIGHT_OFFSET_2[1],
+                    PLAYER_LIGHT_OFFSET_2[2],
+                );
         }
     }
 }
