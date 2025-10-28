@@ -2,8 +2,8 @@ mod ui;
 
 use bevy::prelude::*;
 use rand::Rng;
-use serde::Deserialize;
-use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 use std::f32::consts::FRAC_PI_2;
 use ui::*;
 
@@ -11,14 +11,37 @@ const PLAYER_LIGHT_OFFSET_1: [f32; 3] = [0.0, 1.5, 4.0];
 const PLAYER_LIGHT_OFFSET_2: [f32; 3] = [0.5, -0.5, 4.0];
 const PLAYER_RADIUS: f32 = 8.0 * 0.2;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct MapFile {
     map: MapData,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct MapData {
     grid: Vec<String>,
+    #[serde(default)]
+    apples: Vec<ApplePosition>,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+struct ApplePosition {
+    x: f32,
+    y: f32,
+}
+
+#[derive(Resource)]
+struct AppleTracker {
+    positions: HashSet<(i32, i32)>,   // Grid positions where apples exist
+    world_positions: Vec<(f32, f32)>, // Actual world positions for saving
+}
+
+impl Default for AppleTracker {
+    fn default() -> Self {
+        Self {
+            positions: HashSet::new(),
+            world_positions: Vec::new(),
+        }
+    }
 }
 
 #[derive(Resource)]
@@ -101,6 +124,7 @@ fn main() {
                 test_stats_input,
                 update_billboards,
                 spawn_apple_on_click,
+                save_map_on_input,
             ),
         )
         .run();
@@ -120,6 +144,9 @@ struct PlayerLight2;
 
 #[derive(Component)]
 struct Billboard;
+
+#[derive(Component)]
+struct Apple;
 
 #[derive(Component)]
 struct GroundPlane;
@@ -284,6 +311,32 @@ fn setup_system(
         width,
         height,
     });
+
+    // Initialize apple tracker and spawn existing apples
+    let mut apple_tracker = AppleTracker::default();
+    let scale = 1.2;
+
+    for apple_pos in &map_file.map.apples {
+        // Track the apple position
+        let grid_x = (apple_pos.x / 8.0).floor() as i32;
+        let grid_y = (apple_pos.y / 8.0).floor() as i32;
+        apple_tracker.positions.insert((grid_x, grid_y));
+        apple_tracker
+            .world_positions
+            .push((apple_pos.x, apple_pos.y));
+
+        // Spawn the apple billboard
+        spawn_apple_sprite(
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+            &asset_server,
+            Vec3::new(apple_pos.x, apple_pos.y, scale),
+            scale,
+        );
+    }
+
+    commands.insert_resource(apple_tracker);
 
     commands.insert_resource(bevy::light::AmbientLight {
         color: Color::WHITE,
@@ -656,6 +709,57 @@ fn spawn_billboard_sprite(
     ));
 }
 
+fn spawn_apple_sprite(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    asset_server: &Res<AssetServer>,
+    position: Vec3,
+    scale: f32,
+) {
+    let sprite_material = materials.add(StandardMaterial {
+        base_color_texture: Some(load_image_texture(
+            asset_server,
+            "base/sprites/apple-0001.png",
+        )),
+        base_color: Color::WHITE,
+        alpha_mode: bevy::render::alpha::AlphaMode::Blend,
+        unlit: true,
+        cull_mode: None,
+        ..default()
+    });
+
+    use bevy::asset::RenderAssetUsages;
+    use bevy::mesh::{Indices, PrimitiveTopology};
+
+    let mut billboard_mesh = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::default(),
+    );
+
+    let positions = vec![
+        [0.0, -scale, -scale],
+        [0.0, scale, -scale],
+        [0.0, scale, scale],
+        [0.0, -scale, scale],
+    ];
+    billboard_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+    billboard_mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[1.0, 0.0, 0.0]; 4]);
+
+    let uvs = vec![[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]];
+    billboard_mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+
+    billboard_mesh.insert_indices(Indices::U32(vec![0, 1, 2, 0, 2, 3]));
+
+    commands.spawn((
+        Mesh3d(meshes.add(billboard_mesh)),
+        MeshMaterial3d(sprite_material),
+        Transform::from_translation(position),
+        Billboard,
+        Apple,
+    ));
+}
+
 fn spawn_apple_on_click(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -665,9 +769,19 @@ fn spawn_apple_on_click(
     windows: Query<&bevy::window::Window>,
     camera_query: Query<(&Camera, &GlobalTransform), With<Camera3d>>,
     ground_query: Query<&GlobalTransform, With<GroundPlane>>,
+    ui_interaction_query: Query<&Interaction>,
+    mut apple_tracker: ResMut<AppleTracker>,
 ) {
     if !mouse_button.just_pressed(MouseButton::Left) {
         return;
+    }
+
+    // Check if any UI element is being interacted with
+    for interaction in ui_interaction_query.iter() {
+        if *interaction != Interaction::None {
+            // Mouse is over a UI element, don't spawn apple
+            return;
+        }
     }
 
     let Ok(window) = windows.single() else {
@@ -710,19 +824,80 @@ fn spawn_apple_on_click(
 
     let intersection = ray.origin + ray.direction * t;
 
-    let x = intersection.x.floor() + 0.5;
-    let y = intersection.y.floor() + 0.5;
+    // Round to nearest grid position
+    let grid_x = (intersection.x / 8.0).floor() as i32;
+    let grid_y = (intersection.y / 8.0).floor() as i32;
+
+    // Check if there's already an apple at this position
+    if apple_tracker.positions.contains(&(grid_x, grid_y)) {
+        return;
+    }
+
+    // Calculate world position (centered in grid cell)
+    let world_x = grid_x as f32 * 8.0 + 4.0;
+    let world_y = grid_y as f32 * 8.0 + 4.0;
+
+    // Track the apple
+    apple_tracker.positions.insert((grid_x, grid_y));
+    apple_tracker.world_positions.push((world_x, world_y));
 
     // Spawn apple billboard at the intersection point
-    // Offset Z by scale so the sprite sits on the ground
     let scale = 1.2;
-    spawn_billboard_sprite(
+    spawn_apple_sprite(
         &mut commands,
         &mut meshes,
         &mut materials,
         &asset_server,
-        Vec3::new(x, y, scale),
-        "base/sprites/apple-0001.png",
+        Vec3::new(world_x, world_y, scale),
         scale,
     );
+}
+
+fn save_map_on_input(input: Res<ButtonInput<KeyCode>>, apple_tracker: Res<AppleTracker>) {
+    // Press Ctrl+S to save the map
+    if (input.pressed(KeyCode::ControlLeft) || input.pressed(KeyCode::ControlRight))
+        && input.just_pressed(KeyCode::KeyS)
+    {
+        // Read the current map file
+        let map_yaml = match std::fs::read_to_string("data/map.yaml") {
+            Ok(content) => content,
+            Err(e) => {
+                eprintln!("Failed to read map.yaml: {}", e);
+                return;
+            }
+        };
+
+        let mut map_file: MapFile = match serde_yaml::from_str(&map_yaml) {
+            Ok(file) => file,
+            Err(e) => {
+                eprintln!("Failed to parse map.yaml: {}", e);
+                return;
+            }
+        };
+
+        // Update apples in the map data
+        map_file.map.apples = apple_tracker
+            .world_positions
+            .iter()
+            .map(|(x, y)| ApplePosition { x: *x, y: *y })
+            .collect();
+
+        // Serialize and save
+        let yaml_output = match serde_yaml::to_string(&map_file) {
+            Ok(yaml) => yaml,
+            Err(e) => {
+                eprintln!("Failed to serialize map: {}", e);
+                return;
+            }
+        };
+
+        if let Err(e) = std::fs::write("data/map.yaml", yaml_output) {
+            eprintln!("Failed to write map.yaml: {}", e);
+        } else {
+            println!(
+                "Map saved successfully with {} apples!",
+                apple_tracker.world_positions.len()
+            );
+        }
+    }
 }

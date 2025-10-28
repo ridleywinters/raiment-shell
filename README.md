@@ -22,14 +22,49 @@ Architecturally, it is by designed to prefer simplicity, modularity, and code ma
 
 The major phases of development:
 
-1. Base engine: using Barony as a template, build a block-based, retro-style RPG engine utilizing Bevy
-2. Open world: add city-states, villages, and wilderness to ensure the engine has a Daggerfall massive-world feel
-3. Simulator mechanics: add "Stardew Valley meets Daggerfall" mechanics to ensure the fantasy life simulator goal is being delivered met
-4. Playtest: refine and soldify the rules, mechanics, etc.
-5. Content management: in-game editors and modding
-6. Content & lore: all the core gameplay should be in place, so add more details and variations
+#### Base engine
 
-Version 2.0
+Using Barony as a template, build a block-based, retro-style RPG engine utilizing Bevy.
+
+- Get the basic building blocks for the engine and user interactions in place
+- Use placeholder art and assets; don't worry about art style yet
+
+#### Open world basics
+
+Capture some of the feel of Daggerfall's massive world.
+
+- Get city-states, villages, and wilderness in the game
+- Continue to use placeholder art and assets
+
+#### Simulation mechanics
+
+With support of a large world, cities, and dungeons, shift focus to game mechanics to make this feel not just like a roguelike RPG but rather like a fantasy life simulator.
+
+- Add Stardew Valley-esque mechanics to the town
+- Use placeholder art and assets
+
+#### Playtesting
+
+All the major gameplay and game mechanics should be in place. Begin playtesting to make sure the game is actually fun!
+
+- Iterate on core game mechanics
+- Gradually add detail necessary to flesh out systems that feel incomplete
+
+#### Content
+
+Improve the in-game UI / UX and expand it to allow more direct, intuitive editing of the game world.
+
+- Full in-game mod support
+- Modding API
+- Expanded content and gameplay mechanics
+
+#### Lore and content
+
+Build out the lore and worldbuilding to ensure design coherency and consistency.
+
+- Begin work on higher quality assets for finalized gameplay systems
+
+#### Version 2.0 and beyond...
 
 A long, long-term goal is to rewrite the engine to use a custom, voxel-based rendering and simulation system.
 

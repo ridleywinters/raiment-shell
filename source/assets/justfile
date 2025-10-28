@@ -5,11 +5,13 @@ REPO_ROOT := "${REPO_ROOT}"
 ensure:
     mkdir -p ./base/textures
     mkdir -p ./base/sprites
+    mkdir -p ./base/icons
 
 build: ensure
     cd ${REPO_ROOT}/extern && just expand
     @just build-tiny-textures
     @just build-content
+    @just build-raven-icons
 
 [private]
 build-tiny-textures:
@@ -17,6 +19,9 @@ build-tiny-textures:
 
 build-content:
     build/build-content.ts
+
+build-raven-icons:
+    build/build-raven-icons.ts
 
 clean:
     git clean -fdX ./base

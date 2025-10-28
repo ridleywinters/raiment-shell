@@ -17,6 +17,17 @@ impl Default for PlayerStats {
     }
 }
 
+#[derive(Resource)]
+pub struct Toolbar {
+    pub active_slot: usize, // 0-9
+}
+
+impl Default for Toolbar {
+    fn default() -> Self {
+        Self { active_slot: 0 }
+    }
+}
+
 #[derive(Component)]
 pub struct HealthBar;
 
@@ -26,9 +37,15 @@ pub struct FatigueBar;
 #[derive(Component)]
 pub struct GoldText;
 
-pub fn setup_ui(mut commands: Commands) {
+#[derive(Component)]
+pub struct ToolbarSlot {
+    pub slot_index: usize,
+}
+
+pub fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Initialize player stats
     commands.insert_resource(PlayerStats::default());
+    commands.insert_resource(Toolbar::default());
 
     // PICO-8 colors
     let pico8_red = Color::srgb(1.0, 0.0, 0.3);
@@ -141,13 +158,83 @@ pub fn setup_ui(mut commands: Commands) {
                     ));
                 });
         });
+
+    // Load apple sprite for toolbar placeholder
+    let apple_image = asset_server.load("base/sprites/apple-0001.png");
+
+    // Toolbar at the bottom center
+    commands
+        .spawn(Node {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::FlexEnd,
+            padding: UiRect::all(Val::Px(20.0)),
+            position_type: PositionType::Absolute,
+            ..default()
+        })
+        .with_children(|parent| {
+            // Toolbar container with interaction area and margin
+            parent
+                .spawn((
+                    Node {
+                        flex_direction: FlexDirection::Row,
+                        column_gap: Val::Px(4.0),
+                        padding: UiRect::all(Val::Px(4.0)),
+                        ..default()
+                    },
+                    Interaction::default(),
+                ))
+                .with_children(|parent| {
+                    // Create 10 toolbar slots (0-9)
+                    for i in 0..10 {
+                        let outline_color = if i == 0 {
+                            Color::WHITE
+                        } else {
+                            Color::srgb(0.4, 0.4, 0.4)
+                        };
+
+                        parent
+                            .spawn((
+                                Node {
+                                    width: Val::Px(64.0),
+                                    height: Val::Px(64.0),
+                                    padding: UiRect::all(Val::Px(4.0)),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgba(0.2, 0.2, 0.2, 0.8)),
+                                Outline {
+                                    width: Val::Px(2.0),
+                                    offset: Val::Px(0.0),
+                                    color: outline_color,
+                                },
+                                ToolbarSlot { slot_index: i },
+                            ))
+                            .with_children(|parent| {
+                                // Placeholder apple icon
+                                parent.spawn((
+                                    ImageNode::new(apple_image.clone()),
+                                    Node {
+                                        width: Val::Px(48.0),
+                                        height: Val::Px(48.0),
+                                        ..default()
+                                    },
+                                ));
+                            });
+                    }
+                });
+        });
 }
 
 pub fn update_ui(
     stats: Res<PlayerStats>,
+    toolbar: Res<Toolbar>,
     mut health_query: Query<&mut Node, (With<HealthBar>, Without<FatigueBar>)>,
     mut fatigue_query: Query<&mut Node, (With<FatigueBar>, Without<HealthBar>)>,
     mut gold_query: Query<&mut Text, With<GoldText>>,
+    mut toolbar_slots: Query<(&ToolbarSlot, &mut Outline)>,
 ) {
     // Update health bar width
     if let Ok(mut node) = health_query.single_mut() {
@@ -163,26 +250,75 @@ pub fn update_ui(
     if let Ok(mut text) = gold_query.single_mut() {
         **text = format!("Gold: {}", stats.gold);
     }
+
+    // Update toolbar slot outlines
+    for (slot, mut outline) in toolbar_slots.iter_mut() {
+        outline.color = if slot.slot_index == toolbar.active_slot {
+            Color::WHITE
+        } else {
+            Color::srgb(0.4, 0.4, 0.4)
+        };
+    }
 }
 
 // Test system to modify stats with number keys (for demonstration)
-pub fn test_stats_input(input: Res<ButtonInput<KeyCode>>, mut stats: ResMut<PlayerStats>) {
+// Also handles toolbar slot selection (keys 1-9 and 0)
+pub fn test_stats_input(
+    input: Res<ButtonInput<KeyCode>>,
+    mut stats: ResMut<PlayerStats>,
+    mut toolbar: ResMut<Toolbar>,
+) {
+    // Toolbar slot selection (1-9, 0 for slot 10)
     if input.just_pressed(KeyCode::Digit1) {
-        stats.health = (stats.health - 10.0).max(0.0);
+        toolbar.active_slot = 0;
     }
     if input.just_pressed(KeyCode::Digit2) {
-        stats.health = (stats.health + 10.0).min(100.0);
+        toolbar.active_slot = 1;
     }
     if input.just_pressed(KeyCode::Digit3) {
-        stats.fatigue = (stats.fatigue - 10.0).max(0.0);
+        toolbar.active_slot = 2;
     }
     if input.just_pressed(KeyCode::Digit4) {
-        stats.fatigue = (stats.fatigue + 10.0).min(100.0);
+        toolbar.active_slot = 3;
     }
     if input.just_pressed(KeyCode::Digit5) {
-        stats.gold = stats.gold.saturating_sub(10);
+        toolbar.active_slot = 4;
     }
     if input.just_pressed(KeyCode::Digit6) {
-        stats.gold = stats.gold.saturating_add(10);
+        toolbar.active_slot = 5;
+    }
+    if input.just_pressed(KeyCode::Digit7) {
+        toolbar.active_slot = 6;
+    }
+    if input.just_pressed(KeyCode::Digit8) {
+        toolbar.active_slot = 7;
+    }
+    if input.just_pressed(KeyCode::Digit9) {
+        toolbar.active_slot = 8;
+    }
+    if input.just_pressed(KeyCode::Digit0) {
+        toolbar.active_slot = 9;
+    }
+
+    // Test controls for stats (using Shift + number keys)
+    if input.pressed(KeyCode::ShiftLeft) || input.pressed(KeyCode::ShiftRight) {
+        if input.just_pressed(KeyCode::Digit1) {
+            stats.health = (stats.health - 10.0).max(0.0);
+        }
+        if input.just_pressed(KeyCode::Digit2) {
+            stats.health = (stats.health + 10.0).min(100.0);
+        }
+        if input.just_pressed(KeyCode::Digit3) {
+            stats.fatigue = (stats.fatigue - 10.0).max(0.0);
+        }
+        if input.just_pressed(KeyCode::Digit4) {
+            stats.fatigue = (stats.fatigue + 10.0).min(100.0);
+        }
+        if input.just_pressed(KeyCode::Digit5) {
+            stats.gold = stats.gold.saturating_sub(10);
+        }
+        if input.just_pressed(KeyCode::Digit6) {
+            stats.gold = stats.gold.saturating_add(10);
+        }
     }
 }

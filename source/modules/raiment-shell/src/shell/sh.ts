@@ -5,6 +5,10 @@ import { glob } from "./glob.ts";
 import { mkdir } from "./mkdir.ts";
 import { template } from "./template.ts";
 
+async function copy(source: string, destination: string): Promise<void> {
+    return await Deno.copyFile(source, destination);
+}
+
 export const sh = {
     // String utilities
     expandEnvVars,
@@ -20,4 +24,5 @@ export const sh = {
     // Filesystem
     mkdir,
     glob,
+    copy,
 };

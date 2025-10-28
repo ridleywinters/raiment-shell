@@ -5,6 +5,7 @@ default:
 # decompress external assets
 expand:
     test -d "./expanded/tiny_textures" || just expand-tiny-textures
+    test -d "./expanded/raven_fantasy_icons_free" || just expand-raven_fantasy_icons_free
 
 [private]
 expand-tiny-textures:
@@ -15,6 +16,15 @@ expand-tiny-textures:
     unzip "source/tiny_textures/SBS - Tiny Texture Pack 2 - 512x512.zip" -d ./expanded/tiny_textures/pack-2
     unzip "source/tiny_textures/SBS - Tiny Texture Pack 3 - Large.zip" -d ./expanded/tiny_textures/pack-3
     cp "source/tiny_textures/attribution.meta.md" ./expanded/tiny_textures
+
+# Extract just the 32x32 icons
+[private]
+expand-raven_fantasy_icons_free:
+    mkdir -p ./expanded/raven_fantasy_icons_free
+    unzip "source/raven_fantasy_icons_free/Free - Raven Fantasy Icons.zip" -d ./expanded/raven_fantasy_icons_free
+    mv "./expanded/raven_fantasy_icons_free/Free - Raven Fantasy Icons/Separated Files/32x32/"* ./expanded/raven_fantasy_icons_free/
+    rm -rf "./expanded/raven_fantasy_icons_free/Free - Raven Fantasy Icons"
+    cp "source/raven_fantasy_icons_free/attribution.meta.md" ./expanded/raven_fantasy_icons_free
 
 clean:
     git clean -fdX ./expanded
