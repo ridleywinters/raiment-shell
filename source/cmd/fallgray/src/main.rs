@@ -100,6 +100,7 @@ fn main() {
                 update_ui,
                 test_stats_input,
                 update_billboards,
+                spawn_apple_on_click,
             ),
         )
         .run();
@@ -119,6 +120,9 @@ struct PlayerLight2;
 
 #[derive(Component)]
 struct Billboard;
+
+#[derive(Component)]
+struct GroundPlane;
 
 #[derive(Component)]
 struct LightColorAnimation {
@@ -178,6 +182,7 @@ fn setup_system(
         // Rotate 90 degrees around X to make it XY plane (facing Z)
         Transform::from_rotation(Quat::from_rotation_x(FRAC_PI_2))
             .with_translation(Vec3::new(256.0, 256.0, 0.0)),
+        GroundPlane,
     ));
 
     commands.spawn((
@@ -256,63 +261,17 @@ fn setup_system(
                     ));
                 }
                 'c' => {
-                    // Spawn a billboarded sprite
-                    let sprite_material = materials.add(StandardMaterial {
-                        base_color_texture: Some(load_image_texture(
-                            &asset_server,
-                            "base/sprites/npc-0001.png",
-                        )),
-                        base_color: Color::WHITE,
-                        alpha_mode: bevy::render::alpha::AlphaMode::Blend,
-                        unlit: false,
-                        cull_mode: None, // Render both sides
-                        ..default()
-                    });
-
-                    // Create a vertical plane mesh with flipped UVs
-                    // Normal pointing in X direction makes it vertical (parallel to YZ plane)
-                    use bevy::asset::RenderAssetUsages;
-                    use bevy::mesh::{Indices, PrimitiveTopology};
-
-                    let mut billboard_mesh = Mesh::new(
-                        PrimitiveTopology::TriangleList,
-                        RenderAssetUsages::default(),
-                    );
-
+                    // Spawn a billboarded NPC sprite
                     let scale = 3.8;
-                    let positions = vec![
-                        [0.0, -scale, -scale], // bottom-left
-                        [0.0, scale, -scale],  // top-left
-                        [0.0, scale, scale],   // top-right
-                        [0.0, -scale, scale],  // bottom-right
-                    ];
-                    billboard_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-
-                    // Normals pointing in +X direction
-                    billboard_mesh
-                        .insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[1.0, 0.0, 0.0]; 4]);
-
-                    // UV coordinates (flipped in Y: 1.0 - original V)
-                    let uvs = vec![
-                        [0.0, 1.0], // top-left -> bottom-left in texture
-                        [1.0, 1.0], // top-right -> bottom-right in texture
-                        [1.0, 0.0], // bottom-right -> top-right in texture
-                        [0.0, 0.0], // bottom-left -> top-left in texture
-                    ];
-                    billboard_mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
-
-                    // Indices for two triangles
-                    billboard_mesh.insert_indices(Indices::U32(vec![
-                        0, 1, 2, // first triangle
-                        0, 2, 3, // second triangle
-                    ]));
-
-                    commands.spawn((
-                        Mesh3d(meshes.add(billboard_mesh)),
-                        MeshMaterial3d(sprite_material),
-                        Transform::from_translation(Vec3::new(x + 4.0, y + 4.0, scale)),
-                        Billboard,
-                    ));
+                    spawn_billboard_sprite(
+                        &mut commands,
+                        &mut meshes,
+                        &mut materials,
+                        &asset_server,
+                        Vec3::new(x + 4.0, y + 4.0, scale),
+                        "base/sprites/npc-0001.png",
+                        scale,
+                    );
                 }
                 _ => {}
             }
@@ -638,4 +597,132 @@ fn animate_player_light(
             anim.speed = 1.0 + rng.random_range(-0.2..0.2);
         }
     }
+}
+
+fn spawn_billboard_sprite(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    asset_server: &Res<AssetServer>,
+    position: Vec3,
+    sprite_path: &str,
+    scale: f32,
+) {
+    let sprite_material = materials.add(StandardMaterial {
+        base_color_texture: Some(load_image_texture(asset_server, sprite_path)),
+        base_color: Color::WHITE,
+        alpha_mode: bevy::render::alpha::AlphaMode::Blend,
+        unlit: true,
+        cull_mode: None,
+        ..default()
+    });
+
+    use bevy::asset::RenderAssetUsages;
+    use bevy::mesh::{Indices, PrimitiveTopology};
+
+    let mut billboard_mesh = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::default(),
+    );
+
+    let positions = vec![
+        [0.0, -scale, -scale], // bottom-left
+        [0.0, scale, -scale],  // top-left
+        [0.0, scale, scale],   // top-right
+        [0.0, -scale, scale],  // bottom-right
+    ];
+    billboard_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+
+    billboard_mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[1.0, 0.0, 0.0]; 4]);
+
+    let uvs = vec![
+        [0.0, 1.0], // top-left -> bottom-left in texture
+        [1.0, 1.0], // top-right -> bottom-right in texture
+        [1.0, 0.0], // bottom-right -> top-right in texture
+        [0.0, 0.0], // bottom-left -> top-left in texture
+    ];
+    billboard_mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+
+    billboard_mesh.insert_indices(Indices::U32(vec![
+        0, 1, 2, // first triangle
+        0, 2, 3, // second triangle
+    ]));
+
+    commands.spawn((
+        Mesh3d(meshes.add(billboard_mesh)),
+        MeshMaterial3d(sprite_material),
+        Transform::from_translation(position),
+        Billboard,
+    ));
+}
+
+fn spawn_apple_on_click(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
+    mouse_button: Res<ButtonInput<MouseButton>>,
+    windows: Query<&bevy::window::Window>,
+    camera_query: Query<(&Camera, &GlobalTransform), With<Camera3d>>,
+    ground_query: Query<&GlobalTransform, With<GroundPlane>>,
+) {
+    if !mouse_button.just_pressed(MouseButton::Left) {
+        return;
+    }
+
+    let Ok(window) = windows.single() else {
+        return;
+    };
+
+    let Some(cursor_position) = window.cursor_position() else {
+        return;
+    };
+
+    let Ok((camera, camera_transform)) = camera_query.single() else {
+        return;
+    };
+
+    let Ok(_ground_transform) = ground_query.single() else {
+        return;
+    };
+
+    // Convert cursor position to a ray in world space
+    let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
+        return;
+    };
+
+    // The ground plane is at z=0 in world space (XY plane)
+    // Ray equation: point = origin + t * direction
+    // For intersection with z=0 plane: origin.z + t * direction.z = 0
+    // Therefore: t = -origin.z / direction.z
+
+    if ray.direction.z.abs() < 0.001 {
+        // Ray is parallel to ground plane
+        return;
+    }
+
+    let t = -ray.origin.z / ray.direction.z;
+
+    if t < 0.0 {
+        // Intersection is behind the camera
+        return;
+    }
+
+    let intersection = ray.origin + ray.direction * t;
+
+    let x = intersection.x.floor() + 0.5;
+    let y = intersection.y.floor() + 0.5;
+
+    // Spawn apple billboard at the intersection point
+    // Offset Z by scale so the sprite sits on the ground
+    let scale = 1.2;
+    spawn_billboard_sprite(
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+        &asset_server,
+        Vec3::new(x, y, scale),
+        "base/sprites/apple-0001.png",
+        scale,
+    );
 }
