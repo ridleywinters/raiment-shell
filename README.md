@@ -10,6 +10,8 @@ The game is intended to be easy to play but very difficult to "win." As a fantas
 
 Currently the project is just getting started!
 
+![](./resources/screenshot-2025-10-27-181512.png)
+
 ## Tech stack
 
 Rust core using Bevy and TypeScript (Deno) for scripting and tools.

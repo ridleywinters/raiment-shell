@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use rand::Rng;
 use std::collections::HashMap;
-use std::f32::consts::FRAC_PI_2;
+use std::f32::consts::{E, FRAC_PI_2};
 
 const PLAYER_LIGHT_OFFSET: f32 = 4.0;
 const PLAYER_RADIUS: f32 = 8.0 * 0.2;
@@ -81,7 +81,6 @@ fn main() {
                 camera_control_system,
                 update_player_light,
                 animate_player_light,
-                configure_stone_texture,
             ),
         )
         .run();
@@ -111,6 +110,24 @@ impl Default for LightColorAnimation {
     }
 }
 
+fn load_image_texture<T: Into<String>>(asset_server: &Res<AssetServer>, path: T) -> Handle<Image> {
+    let texture_handle = asset_server.load_with_settings(
+        path.into(),
+        |settings: &mut bevy::image::ImageLoaderSettings| {
+            settings.sampler =
+                bevy::image::ImageSampler::Descriptor(bevy::image::ImageSamplerDescriptor {
+                    address_mode_u: bevy::image::ImageAddressMode::Repeat,
+                    address_mode_v: bevy::image::ImageAddressMode::Repeat,
+                    mag_filter: bevy::image::ImageFilterMode::Nearest,
+                    min_filter: bevy::image::ImageFilterMode::Nearest,
+                    ..Default::default()
+                });
+        },
+    );
+
+    texture_handle
+}
+
 fn setup_system(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -134,7 +151,10 @@ fn setup_system(
         ..default()
     });
     let plane_material2 = materials.add(StandardMaterial {
-        base_color_texture: Some(asset_server.load("base/textures/stone.png")),
+        base_color_texture: Some(load_image_texture(
+            &asset_server,
+            "base/textures/stone_1.png",
+        )),
         base_color: Color::WHITE,
         perceptual_roughness: 1.0,
         metallic: 0.0,
@@ -206,6 +226,19 @@ fn setup_system(
 
     let mut collision_grid = HashMap::new();
 
+    let wall_material = materials.add(StandardMaterial {
+        base_color_texture: Some(load_image_texture(
+            &asset_server,
+            "base/textures/stone_2.png",
+        )),
+        base_color: Color::WHITE,
+        perceptual_roughness: 1.0,
+        metallic: 0.0,
+        reflectance: 0.0,
+        uv_transform: bevy::math::Affine2::from_scale(Vec2::new(1.0, 1.0)),
+        ..default()
+    });
+
     // Parse the map and create cubes for each 'X'
     for (row, line) in lines.iter().enumerate() {
         for (col, ch) in line.chars().enumerate() {
@@ -230,7 +263,7 @@ fn setup_system(
 
             commands.spawn((
                 Mesh3d(mesh),
-                MeshMaterial3d(materials.add(color)),
+                MeshMaterial3d(wall_material.clone()),
                 Transform::from_translation(Vec3::new(x, y, 0.0)),
             ));
         }
@@ -258,8 +291,8 @@ fn setup_system(
             Vec3::Z,
         ),
         Player {
-            speed: 50.0,
-            rot_speed: 1.5,
+            speed: 32.0,
+            rot_speed: 2.75,
         },
     ));
 
@@ -291,6 +324,30 @@ fn camera_control_system(
     for (mut transform, player) in query.iter_mut() {
         let dt = time.delta_secs();
 
+        // Movement input (WASD + QE)
+        // WASD moves in the XY plane, Q/E moves along Z axis
+        let mut movement_xy = Vec2::ZERO; // Movement in XY plane
+        let mut movement_z = 0.0; // Movement along Z axis
+
+        if input.pressed(KeyCode::KeyW) {
+            movement_xy.y += 1.0; // Forward
+        }
+        if input.pressed(KeyCode::KeyS) {
+            movement_xy.y -= 1.0; // Backward
+        }
+        if input.pressed(KeyCode::KeyA) {
+            movement_xy.x -= 1.0; // Left
+        }
+        if input.pressed(KeyCode::KeyD) {
+            movement_xy.x += 1.0; // Right
+        }
+        if input.pressed(KeyCode::KeyF) {
+            movement_z -= 1.0; // Down
+        }
+        if input.pressed(KeyCode::KeyR) {
+            movement_z += 1.0; // Up
+        }
+
         // Rotation input (Arrow keys)
         // Arrow left/right rotates around Z axis (yaw)
         // Arrow up/down changes pitch (looking up/down)
@@ -308,6 +365,34 @@ fn camera_control_system(
         }
         if input.pressed(KeyCode::ArrowDown) {
             pitch_delta -= player.rot_speed * dt;
+        }
+
+        // Get current yaw from the forward direction projected onto XY plane
+
+        {
+            let scale = if yaw_delta.abs() > 0.0 {
+                0.25
+            } else if movement_xy.length_squared() > 0.0 {
+                0.1
+            } else {
+                0.0
+            };
+
+            let forward_3d = transform.forward().as_vec3();
+            let forward_xy = Vec2::new(forward_3d.x, forward_3d.y);
+            let yaw = forward_xy.y.atan2(forward_xy.x);
+
+            let snap_increment = (std::f32::consts::PI / 4.0);
+            let mut yaw_snap = (yaw / snap_increment).round() * snap_increment;
+
+            if yaw_delta < 0.0 && yaw_snap > yaw {
+                yaw_snap -= snap_increment;
+            } else if yaw_delta > 0.0 && yaw_snap < yaw {
+                yaw_snap += snap_increment;
+            }
+
+            let max = scale * player.rot_speed * dt;
+            yaw_delta += (yaw_snap - yaw).clamp(-max, max);
         }
 
         // Apply rotation
@@ -336,30 +421,6 @@ fn camera_control_system(
                     transform.rotation = pitch_rotation * transform.rotation;
                 }
             }
-        }
-
-        // Movement input (WASD + QE)
-        // WASD moves in the XY plane, Q/E moves along Z axis
-        let mut movement_xy = Vec2::ZERO; // Movement in XY plane
-        let mut movement_z = 0.0; // Movement along Z axis
-
-        if input.pressed(KeyCode::KeyW) {
-            movement_xy.y += 1.0; // Forward
-        }
-        if input.pressed(KeyCode::KeyS) {
-            movement_xy.y -= 1.0; // Backward
-        }
-        if input.pressed(KeyCode::KeyA) {
-            movement_xy.x -= 1.0; // Left
-        }
-        if input.pressed(KeyCode::KeyD) {
-            movement_xy.x += 1.0; // Right
-        }
-        if input.pressed(KeyCode::KeyF) {
-            movement_z -= 1.0; // Down
-        }
-        if input.pressed(KeyCode::KeyR) {
-            movement_z += 1.0; // Up
         }
 
         // Apply XY plane movement in camera's local orientation (projected to XY plane)
@@ -460,32 +521,6 @@ fn animate_player_light(
             let mut rng = rand::rng();
             anim.speed = 1.0 + rng.random_range(-0.2..0.2);
         }
-    }
-}
-
-fn configure_stone_texture(
-    asset_server: Res<AssetServer>,
-    mut images: ResMut<Assets<Image>>,
-    mut configured: Local<bool>,
-) {
-    // Only run once
-    if *configured {
-        return;
-    }
-
-    // Check if the stone texture is loaded
-    let handle: Handle<Image> = asset_server.load("base/textures/stone.png");
-    if let Some(image) = images.get_mut(&handle) {
-        // Configure the sampler for repeat mode and nearest filtering
-        image.sampler =
-            bevy::image::ImageSampler::Descriptor(bevy::image::ImageSamplerDescriptor {
-                address_mode_u: bevy::image::ImageAddressMode::Repeat,
-                address_mode_v: bevy::image::ImageAddressMode::Repeat,
-                mag_filter: bevy::image::ImageFilterMode::Nearest,
-                min_filter: bevy::image::ImageFilterMode::Nearest,
-                ..Default::default()
-            });
-        *configured = true;
     }
 }
 

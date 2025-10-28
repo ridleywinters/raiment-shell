@@ -13,4 +13,8 @@ build-tiny-textures:
     {{SCRIPTS}}/extract_texture.ts \
         "{{EXPANDED}}/tiny_textures/pack-3/512x512/Stone/Stone_16-512x512.png" \
         "{{EXPANDED}}/tiny_textures/attribution.meta.md" \
-        "64x64" "./base/textures/stone.png"
+        "64x64" "./base/textures/stone_1.png"
+    {{SCRIPTS}}/extract_texture.ts \
+        "{{EXPANDED}}/tiny_textures/pack-3/512x512/Stone/Stone_06-512x512.png" \
+        "{{EXPANDED}}/tiny_textures/attribution.meta.md" \
+        "64x64" "./base/textures/stone_2.png"
