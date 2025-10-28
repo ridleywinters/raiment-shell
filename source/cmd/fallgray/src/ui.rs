@@ -58,31 +58,31 @@ pub fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
             height: Val::Percent(100.0),
             justify_content: JustifyContent::FlexStart,
             align_items: AlignItems::FlexEnd,
-            padding: UiRect::all(Val::Px(20.0)),
+            padding: UiRect::all(Val::Px(8.0)),
             position_type: PositionType::Absolute,
             ..default()
         })
         .with_children(|parent| {
-            // Container for status bars with background
+            // Container for status bars
             parent
-                .spawn((
-                    Node {
-                        flex_direction: FlexDirection::Column,
-                        row_gap: Val::Px(8.0),
-                        padding: UiRect::all(Val::Px(10.0)),
-                        ..default()
-                    },
-                    BackgroundColor(Color::srgba(0.2, 0.2, 0.2, 0.8)),
-                ))
+                .spawn(Node {
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(2.0),
+                    ..default()
+                })
                 .with_children(|parent| {
-                    // Health bar
+                    // Health bar with its own background
                     parent
-                        .spawn(Node {
-                            flex_direction: FlexDirection::Row,
-                            align_items: AlignItems::Center,
-                            column_gap: Val::Px(10.0),
-                            ..default()
-                        })
+                        .spawn((
+                            Node {
+                                flex_direction: FlexDirection::Row,
+                                align_items: AlignItems::Center,
+                                column_gap: Val::Px(10.0),
+                                padding: UiRect::all(Val::Px(8.0)),
+                                ..default()
+                            },
+                            BackgroundColor(Color::srgba(0.2, 0.2, 0.2, 0.8)),
+                        ))
                         .with_children(|parent| {
                             // Heart icon
                             parent.spawn((
@@ -93,7 +93,7 @@ pub fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                                     ..default()
                                 },
                             ));
-                            
+
                             // Bar background
                             parent
                                 .spawn((
@@ -123,14 +123,18 @@ pub fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                                 });
                         });
 
-                    // Fatigue bar
+                    // Fatigue bar with its own background
                     parent
-                        .spawn(Node {
-                            flex_direction: FlexDirection::Row,
-                            align_items: AlignItems::Center,
-                            column_gap: Val::Px(10.0),
-                            ..default()
-                        })
+                        .spawn((
+                            Node {
+                                flex_direction: FlexDirection::Row,
+                                align_items: AlignItems::Center,
+                                column_gap: Val::Px(10.0),
+                                padding: UiRect::all(Val::Px(8.0)),
+                                ..default()
+                            },
+                            BackgroundColor(Color::srgba(0.2, 0.2, 0.2, 0.8)),
+                        ))
                         .with_children(|parent| {
                             // Foot icon
                             parent.spawn((
@@ -141,7 +145,7 @@ pub fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                                     ..default()
                                 },
                             ));
-                            
+
                             // Bar background
                             parent
                                 .spawn((
@@ -226,7 +230,7 @@ pub fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
             height: Val::Percent(100.0),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::FlexEnd,
-            padding: UiRect::all(Val::Px(20.0)),
+            padding: UiRect::all(Val::Px(8.0)),
             position_type: PositionType::Absolute,
             ..default()
         })
@@ -285,7 +289,7 @@ pub fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
                                         ..default()
                                     },
                                 ));
-                                
+
                                 // Numeric label (1-9, 0 for slot 9)
                                 let label_text = if i == 9 { "0" } else { &(i + 1).to_string() };
                                 parent.spawn((
@@ -378,27 +382,5 @@ pub fn test_stats_input(
     }
     if input.just_pressed(KeyCode::Digit0) {
         toolbar.active_slot = 9;
-    }
-
-    // Test controls for stats (using Shift + number keys)
-    if input.pressed(KeyCode::ShiftLeft) || input.pressed(KeyCode::ShiftRight) {
-        if input.just_pressed(KeyCode::Digit1) {
-            stats.health = (stats.health - 10.0).max(0.0);
-        }
-        if input.just_pressed(KeyCode::Digit2) {
-            stats.health = (stats.health + 10.0).min(100.0);
-        }
-        if input.just_pressed(KeyCode::Digit3) {
-            stats.fatigue = (stats.fatigue - 10.0).max(0.0);
-        }
-        if input.just_pressed(KeyCode::Digit4) {
-            stats.fatigue = (stats.fatigue + 10.0).min(100.0);
-        }
-        if input.just_pressed(KeyCode::Digit5) {
-            stats.gold = stats.gold.saturating_sub(10);
-        }
-        if input.just_pressed(KeyCode::Digit6) {
-            stats.gold = stats.gold.saturating_add(10);
-        }
     }
 }
