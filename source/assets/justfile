@@ -27,3 +27,7 @@ build-content:
         -i "{{REPO_ROOT}}/source/content/sprites/npc-0001.aseprite" \
         -o "./base/sprites/npc-0001.png"
     cp -f "{{REPO_ROOT}}/source/content/sprites/attribution.meta.md" "./base/sprites/npc-0001.meta.md"
+    {{SCRIPTS}}/aseprite_to_png.ts \
+        -i "{{REPO_ROOT}}/source/content/sprites/debug-0001.aseprite" \
+        -o "./base/sprites/debug-0001.png"
+    cp -f "{{REPO_ROOT}}/source/content/sprites/attribution.meta.md" "./base/sprites/debug-0001.meta.md"

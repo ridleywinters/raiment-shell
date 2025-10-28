@@ -4,9 +4,10 @@ ensure:
 build: ensure
     cargo build --release
 
-dev:
+dev: ensure
+    cargo run --release
 
-run: ensure
+run: ensure lint
     cargo run --release
 
 test:

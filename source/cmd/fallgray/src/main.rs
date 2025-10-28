@@ -290,8 +290,7 @@ fn setup_system(
                         RenderAssetUsages::default(),
                     );
 
-                    // Vertices for a plane perpendicular to X axis (vertical, 8x8 units in YZ)
-                    let scale = 5.0;
+                    let scale = 3.8;
                     let positions = vec![
                         [0.0, -scale, -scale], // bottom-left
                         [0.0, scale, -scale],  // top-left
@@ -322,7 +321,7 @@ fn setup_system(
                     commands.spawn((
                         Mesh3d(meshes.add(billboard_mesh)),
                         MeshMaterial3d(sprite_material),
-                        Transform::from_translation(Vec3::new(x, y, scale)),
+                        Transform::from_translation(Vec3::new(x + 4.0, y + 4.0, scale)),
                         Billboard,
                     ));
                 }
@@ -344,12 +343,16 @@ fn setup_system(
         affects_lightmapped_meshes: false,
     });
 
-    let player_start_pos = Vec3::new(256.0 + 4.0, 200.0 + 4.0, 6.4);
+    let player_start_pos = Vec3::new(256.0 + 4.0, 200.0 + 4.0, 4.8);
 
     commands.spawn((
         Camera3d::default(),
         Transform::from_xyz(player_start_pos.x, player_start_pos.y, player_start_pos.z).looking_at(
-            Vec3::new(player_start_pos.x - 1.0, player_start_pos.y, 6.4),
+            Vec3::new(
+                player_start_pos.x - 1.0,
+                player_start_pos.y,
+                player_start_pos.z * 1.01,
+            ),
             Vec3::Z,
         ),
         Player {
