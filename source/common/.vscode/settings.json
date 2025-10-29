@@ -1,0 +1,36 @@
+{
+    // This seems like a better default
+    "explorer.incrementalNaming": "smart",
+
+    // In general, disable inlay hints unless the user explicitly requests them
+    "editor.inlayHints.enabled": "offUnlessPressed",
+    "editor.minimap.enabled": false,
+
+    // Subjective: the underline highlight on mutable variables is very distracting
+    // and rarely provide useful information.
+    "editor.semanticTokenColorCustomizations": {
+        "enabled": true,
+        "rules": {
+            "*.mutable": {
+                "underline": false
+            }
+        }
+    },
+
+    // Disable the rust-analyzer features that clutter the editor experience
+    "rust-analyzer.lens.enable": false,
+    "rust-analyzer.inlayHints.typeHints.enable": false,
+    "rust-analyzer.inlayHints.parameterHints.enable": false,
+    "rust-analyzer.inlayHints.chainingHints.enable": false,
+    "rust-analyzer.inlayHints.lifetimeElisionHints.enable": "never",
+    "rust-analyzer.inlayHints.closureReturnTypeHints.enable": "never",
+    "rust-analyzer.inlayHints.reborrowHints.enable": "never",
+
+    // Chat settings
+    "chat.tools.autoApprove": true,
+    "chat.agent.maxRequests": 1000,
+
+    // Make the adornments smaller and the editor the focus
+    "window.zoomLevel": 0.75,
+    "editor.fontSize": 15
+}

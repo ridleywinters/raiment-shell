@@ -1,4 +1,6 @@
 ensure:
+    @mkdir -p .vscode
+    cp -f ${REPO_ROOT}/source/common/.vscode/settings.json .vscode/settings.json
     @cd ${REPO_ROOT}/source/assets && just build
 
 build: ensure

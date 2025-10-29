@@ -39,11 +39,11 @@ struct MapFile {
 struct MapData {
     grid: Vec<String>,
     #[serde(default)]
-    apples: Vec<ApplePosition>,
+    items: Vec<ItemPosition>,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
-struct ApplePosition {
+struct ItemPosition {
     x: f32,
     y: f32,
     #[serde(default = "default_item_type")]
@@ -56,7 +56,7 @@ fn default_item_type() -> String {
 
 #[derive(Resource)]
 struct ItemTracker {
-    positions: HashSet<(i32, i32)>, // Grid positions where apples exist
+    positions: HashSet<(i32, i32)>, // Grid positions where items exist
     world_positions: Vec<(f32, f32, String)>, // Actual world positions and item types for saving
 }
 
@@ -74,9 +74,8 @@ impl ItemTracker {
         let grid_x = (world_x / 8.0).floor() as i32;
         let grid_y = (world_y / 8.0).floor() as i32;
         self.positions.remove(&(grid_x, grid_y));
-        self.world_positions.retain(|(x, y, _)| {
-            (*x - world_x).abs() > 0.1 || (*y - world_y).abs() > 0.1
-        });
+        self.world_positions
+            .retain(|(x, y, _)| (*x - world_x).abs() > 0.1 || (*y - world_y).abs() > 0.1);
     }
 }
 
@@ -119,7 +118,7 @@ fn main() {
                 update_toolbar_input,
                 update_toolbar_click,
                 update_billboards,
-                update_spawn_apple_on_click,
+                update_spawn_item_on_click,
                 update_save_map_on_input,
                 update_check_item_collision,
             ),
@@ -319,41 +318,41 @@ fn startup_system(
     // Insert collision map as a resource
     commands.insert_resource(CollisionMap::new(collision_grid, width, height));
 
-    // Initialize apple tracker and spawn existing apples
-    let mut apple_tracker = ItemTracker::default();
+    // Initialize item tracker and spawn existing items
+    let mut item_tracker = ItemTracker::default();
 
-    for apple_pos in &map_file.map.apples {
-        // Track the apple position
-        let grid_x = (apple_pos.x / 8.0).floor() as i32;
-        let grid_y = (apple_pos.y / 8.0).floor() as i32;
-        apple_tracker.positions.insert((grid_x, grid_y));
-        apple_tracker
+    for item_pos in &map_file.map.items {
+        // Track the item position
+        let grid_x = (item_pos.x / 8.0).floor() as i32;
+        let grid_y = (item_pos.y / 8.0).floor() as i32;
+        item_tracker.positions.insert((grid_x, grid_y));
+        item_tracker
             .world_positions
-            .push((apple_pos.x, apple_pos.y, apple_pos.item_type.clone()));
+            .push((item_pos.x, item_pos.y, item_pos.item_type.clone()));
 
         // Get scale from item definition for positioning
-        let apple_def = item_definitions
+        let item_def = item_definitions
             .items
-            .get(&apple_pos.item_type)
+            .get(&item_pos.item_type)
             .expect(&format!(
                 "Item definition not found: {}",
-                apple_pos.item_type
+                item_pos.item_type
             ));
-        let scale = apple_def.scale;
+        let scale = item_def.scale;
 
         // Spawn the item billboard
-        spawn_apple_sprite(
+        spawn_item(
             &mut commands,
             &mut meshes,
             &mut materials,
             &asset_server,
             &item_definitions.items,
-            Vec3::new(apple_pos.x, apple_pos.y, scale),
-            &apple_pos.item_type,
+            Vec3::new(item_pos.x, item_pos.y, scale),
+            &item_pos.item_type,
         );
     }
 
-    commands.insert_resource(apple_tracker);
+    commands.insert_resource(item_tracker);
 
     // Insert item definitions as a resource
     commands.insert_resource(item_definitions);
@@ -735,7 +734,7 @@ fn spawn_billboard_sprite(
     ));
 }
 
-fn spawn_apple_sprite(
+fn spawn_item(
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
@@ -792,7 +791,7 @@ fn spawn_apple_sprite(
     ));
 }
 
-fn update_spawn_apple_on_click(
+fn update_spawn_item_on_click(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -802,7 +801,7 @@ fn update_spawn_apple_on_click(
     camera_query: Query<(&Camera, &GlobalTransform), With<Camera3d>>,
     ground_query: Query<&GlobalTransform, With<GroundPlane>>,
     ui_interaction_query: Query<&Interaction>,
-    mut apple_tracker: ResMut<ItemTracker>,
+    mut item_tracker: ResMut<ItemTracker>,
     toolbar: Res<Toolbar>,
     item_definitions: Res<ItemDefinitions>,
 ) {
@@ -813,7 +812,6 @@ fn update_spawn_apple_on_click(
     // Check if any UI element is being interacted with
     for interaction in ui_interaction_query.iter() {
         if *interaction != Interaction::None {
-            // Mouse is over a UI element, don't spawn apple
             return;
         }
     }
@@ -862,8 +860,8 @@ fn update_spawn_apple_on_click(
     let grid_x = (intersection.x / 2.0).floor() as i32;
     let grid_y = (intersection.y / 2.0).floor() as i32;
 
-    // Check if there's already an apple at this position
-    if apple_tracker.positions.contains(&(grid_x, grid_y)) {
+    // Check if there's already an item at this position
+    if item_tracker.positions.contains(&(grid_x, grid_y)) {
         return;
     }
 
@@ -879,8 +877,8 @@ fn update_spawn_apple_on_click(
     };
 
     // Track the item
-    apple_tracker.positions.insert((grid_x, grid_y));
-    apple_tracker
+    item_tracker.positions.insert((grid_x, grid_y));
+    item_tracker
         .world_positions
         .push((world_x, world_y, item_key.to_string()));
 
@@ -892,7 +890,7 @@ fn update_spawn_apple_on_click(
     let scale = item_def.scale;
 
     // Spawn item billboard at the intersection point
-    spawn_apple_sprite(
+    spawn_item(
         &mut commands,
         &mut meshes,
         &mut materials,
@@ -903,7 +901,7 @@ fn update_spawn_apple_on_click(
     );
 }
 
-fn update_save_map_on_input(input: Res<ButtonInput<KeyCode>>, apple_tracker: Res<ItemTracker>) {
+fn update_save_map_on_input(input: Res<ButtonInput<KeyCode>>, item_tracker: Res<ItemTracker>) {
     // Press Ctrl+S to save the map
     if (input.pressed(KeyCode::ControlLeft) || input.pressed(KeyCode::ControlRight))
         && input.just_pressed(KeyCode::KeyS)
@@ -925,11 +923,11 @@ fn update_save_map_on_input(input: Res<ButtonInput<KeyCode>>, apple_tracker: Res
             }
         };
 
-        // Update apples in the map data
-        map_file.map.apples = apple_tracker
+        // Update items in the map data
+        map_file.map.items = item_tracker
             .world_positions
             .iter()
-            .map(|(x, y, item_type)| ApplePosition {
+            .map(|(x, y, item_type)| ItemPosition {
                 x: *x,
                 y: *y,
                 item_type: item_type.clone(),
@@ -949,8 +947,8 @@ fn update_save_map_on_input(input: Res<ButtonInput<KeyCode>>, apple_tracker: Res
             eprintln!("Failed to write map.yaml: {}", e);
         } else {
             println!(
-                "Map saved successfully with {} apples!",
-                apple_tracker.world_positions.len()
+                "Map saved successfully with {} items!",
+                item_tracker.world_positions.len()
             );
         }
     }
@@ -970,10 +968,10 @@ fn update_check_item_collision(
 
     let player_pos = player_transform.translation;
 
-    for (entity, item_transform, apple) in item_query.iter() {
+    for (entity, item_transform, item) in item_query.iter() {
         let item_pos = item_transform.translation;
 
-        if check_circle_collision(player_pos, item_pos, apple.interaction_radius) {
+        if check_circle_collision(player_pos, item_pos, item.interaction_radius) {
             // Find the item type from the tracker
             let item_type = item_tracker
                 .world_positions
