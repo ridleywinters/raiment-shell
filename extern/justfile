@@ -21,7 +21,7 @@ expand-tiny-textures:
 [private]
 expand-raven_fantasy_icons_free:
     mkdir -p ./expanded/raven_fantasy_icons_free
-    unzip "source/raven_fantasy_icons_free/Free - Raven Fantasy Icons.zip" -d ./expanded/raven_fantasy_icons_free
+    unzip "source/raven_fantasy_icons_free/raven_fantasy_icons_free.zip" -d ./expanded/raven_fantasy_icons_free
     mv "./expanded/raven_fantasy_icons_free/Free - Raven Fantasy Icons/Separated Files/32x32/"* ./expanded/raven_fantasy_icons_free/
     rm -rf "./expanded/raven_fantasy_icons_free/Free - Raven Fantasy Icons"
     cp "source/raven_fantasy_icons_free/attribution.meta.md" ./expanded/raven_fantasy_icons_free
