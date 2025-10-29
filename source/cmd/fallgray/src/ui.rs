@@ -42,7 +42,7 @@ pub struct ToolbarSlot {
     pub slot_index: usize,
 }
 
-pub fn setup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
+pub fn startup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Initialize player stats
     commands.insert_resource(PlayerStats::default());
     commands.insert_resource(Toolbar::default());
@@ -350,7 +350,7 @@ pub fn update_ui(
 
 // Test system to modify stats with number keys (for demonstration)
 // Also handles toolbar slot selection (keys 1-9 and 0)
-pub fn test_stats_input(
+pub fn update_toolbar_input(
     input: Res<ButtonInput<KeyCode>>,
     mut stats: ResMut<PlayerStats>,
     mut toolbar: ResMut<Toolbar>,

@@ -1,27 +1,42 @@
-SCRIPTS := "${REPO_ROOT}/source/scripts"
-EXPANDED := "${REPO_ROOT}/extern/expanded"
-REPO_ROOT := "${REPO_ROOT}"
+[private]
+default:
+    @just --list --unsorted    
 
 ensure:
     mkdir -p ./base/textures
     mkdir -p ./base/sprites
     mkdir -p ./base/icons
 
-build: ensure
+build:
+    @just run_with_sentinel _build-imp ./base/.build-complete
+
+_build-imp: ensure
     cd ${REPO_ROOT}/extern && just expand
-    @just build-tiny-textures
-    @just build-content
-    @just build-raven-icons
-
-[private]
-build-tiny-textures:
     build/build-tiny-textures.ts
-
-build-content:
     build/build-content.ts
-
-build-raven-icons:
     build/build-raven-icons.ts
+
+rebuild: clean build
 
 clean:
     git clean -fdX ./base
+
+#==============================================================================
+# Utility recipes
+#==============================================================================
+
+# Runs the target recipe if and only if the specified filename does not exist
+[private]
+run_if_not_exists target filename:
+    #!/usr/bin/env bash
+    if [ ! -f {{filename}} ]; then \
+        just {{target}}; \
+    fi
+
+[private]
+run_with_sentinel target sentinel:
+    #!/usr/bin/env bash
+    if [ ! -f {{sentinel}} ]; then \
+        just {{target}}; \
+        touch {{sentinel}}; \
+    fi

@@ -1,6 +1,8 @@
+mod collision;
 mod ui;
 
 use bevy::prelude::*;
+use collision::{CollisionMap, PLAYER_RADIUS, check_circle_collision};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -9,7 +11,6 @@ use ui::*;
 
 const PLAYER_LIGHT_OFFSET_1: [f32; 3] = [0.0, 1.5, 4.0];
 const PLAYER_LIGHT_OFFSET_2: [f32; 3] = [0.5, -0.5, 4.0];
-const PLAYER_RADIUS: f32 = 8.0 * 0.2;
 
 #[derive(Deserialize, Serialize)]
 struct MapFile {
@@ -44,52 +45,6 @@ impl Default for AppleTracker {
     }
 }
 
-#[derive(Resource)]
-struct CollisionMap {
-    grid: HashMap<(i32, i32), bool>,
-    width: usize,
-    height: usize,
-}
-
-impl CollisionMap {
-    fn is_solid(&self, grid_x: i32, grid_y: i32) -> bool {
-        // Check bounds first
-        if grid_x < 0 || grid_y < 0 || grid_x >= self.width as i32 || grid_y >= self.height as i32 {
-            return true; // Treat out of bounds as solid
-        }
-        // If not in map, treat as empty (false)
-        *self.grid.get(&(grid_x, grid_y)).unwrap_or(&false)
-    }
-
-    fn can_move_to(&self, world_x: f32, world_y: f32, radius: f32) -> bool {
-        // Treat player as a 2D bounding box with width and height of 2 * radius
-        let half_size = radius;
-        let min_x = world_x - half_size;
-        let max_x = world_x + half_size;
-        let min_y = world_y - half_size;
-        let max_y = world_y + half_size;
-
-        // Calculate grid cell range that the bounding box overlaps
-        // Check all cells that any part of the box could touch
-        let min_grid_x = (min_x / 8.0).floor() as i32;
-        let max_grid_x = (max_x / 8.0).floor() as i32;
-        let min_grid_y = (min_y / 8.0).floor() as i32;
-        let max_grid_y = (max_y / 8.0).floor() as i32;
-
-        // Check if any of the cells the bounding box overlaps is solid
-        for grid_y in min_grid_y..=max_grid_y {
-            for grid_x in min_grid_x..=max_grid_x {
-                let solid = self.is_solid(grid_x, grid_y);
-                if solid {
-                    return false;
-                }
-            }
-        }
-
-        true
-    }
-}
-
 fn main() {
     // Get asset path from REPO_ROOT environment variable
     let asset_path = std::env::var("REPO_ROOT")
@@ -112,20 +67,25 @@ fn main() {
                     ..default()
                 }),
         )
-        .add_systems(Startup, setup_system)
-        .add_systems(Startup, setup_ui)
+        .add_systems(
+            Startup,
+            (
+                startup_system, //
+                startup_ui,
+            ),
+        )
         .add_systems(
             Update,
             (
-                camera_control_system,
+                update_camera_control_system,
                 update_player_light,
-                animate_player_light,
+                update_player_light_animation,
                 update_ui,
-                test_stats_input,
+                update_toolbar_input,
                 update_billboards,
-                spawn_apple_on_click,
-                save_map_on_input,
-                check_apple_collision,
+                update_spawn_apple_on_click,
+                update_save_map_on_input,
+                update_check_apple_collision,
             ),
         )
         .run();
@@ -185,7 +145,7 @@ fn load_image_texture<T: Into<String>>(asset_server: &Res<AssetServer>, path: T)
     )
 }
 
-fn setup_system(
+fn startup_system(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -299,7 +259,7 @@ fn setup_system(
                         &mut materials,
                         &asset_server,
                         Vec3::new(x + 4.0, y + 4.0, scale),
-                        "base/sprites/npc-0001.png",
+                        "base/sprites/monster-skeleton-01.png",
                         scale,
                     );
                 }
@@ -309,11 +269,7 @@ fn setup_system(
     }
 
     // Insert collision map as a resource
-    commands.insert_resource(CollisionMap {
-        grid: collision_grid,
-        width,
-        height,
-    });
+    commands.insert_resource(CollisionMap::new(collision_grid, width, height));
 
     // Initialize apple tracker and spawn existing apples
     let mut apple_tracker = AppleTracker::default();
@@ -427,7 +383,7 @@ fn update_billboards(
     }
 }
 
-fn camera_control_system(
+fn update_camera_control_system(
     time: Res<Time>,
     input: Res<ButtonInput<KeyCode>>,
     collision_map: Res<CollisionMap>,
@@ -615,7 +571,7 @@ fn hex_to_color(hex: &str) -> Color {
     Color::srgb(r, g, b)
 }
 
-fn animate_player_light(
+fn update_player_light_animation(
     time: Res<Time>,
     mut light_query: Query<(&mut PointLight, &mut LightColorAnimation), With<PlayerLight>>,
 ) {
@@ -729,7 +685,7 @@ fn spawn_apple_sprite(
     let sprite_material = materials.add(StandardMaterial {
         base_color_texture: Some(load_image_texture(
             asset_server,
-            "base/sprites/apple-0001.png",
+            "base/sprites/apple-01.png",
         )),
         base_color: Color::WHITE,
         alpha_mode: bevy::render::alpha::AlphaMode::Blend,
@@ -771,7 +727,7 @@ fn spawn_apple_sprite(
     ));
 }
 
-fn spawn_apple_on_click(
+fn update_spawn_apple_on_click(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -864,7 +820,7 @@ fn spawn_apple_on_click(
     );
 }
 
-fn save_map_on_input(input: Res<ButtonInput<KeyCode>>, apple_tracker: Res<AppleTracker>) {
+fn update_save_map_on_input(input: Res<ButtonInput<KeyCode>>, apple_tracker: Res<AppleTracker>) {
     // Press Ctrl+S to save the map
     if (input.pressed(KeyCode::ControlLeft) || input.pressed(KeyCode::ControlRight))
         && input.just_pressed(KeyCode::KeyS)
@@ -913,7 +869,7 @@ fn save_map_on_input(input: Res<ButtonInput<KeyCode>>, apple_tracker: Res<AppleT
     }
 }
 
-fn check_apple_collision(
+fn update_check_apple_collision(
     mut commands: Commands,
     player_query: Query<&Transform, With<Player>>,
     apple_query: Query<(Entity, &Transform, &Apple)>,
@@ -929,12 +885,7 @@ fn check_apple_collision(
     for (entity, apple_transform, apple) in apple_query.iter() {
         let apple_pos = apple_transform.translation;
 
-        // Calculate distance in XY plane
-        let dx = player_pos.x - apple_pos.x;
-        let dy = player_pos.y - apple_pos.y;
-        let distance = (dx * dx + dy * dy).sqrt();
-
-        if distance <= apple.interaction_radius {
+        if check_circle_collision(player_pos, apple_pos, apple.interaction_radius) {
             // Increase fatigue by 10
             stats.fatigue = (stats.fatigue + 10.0).min(100.0);
 

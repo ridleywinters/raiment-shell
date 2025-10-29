@@ -2,10 +2,15 @@
 
 import { sh } from "@raiment-shell";
 
-const SRC_DIR = sh.template("$REPO_ROOT/extern/expanded/raven_fantasy_icons_free");
-const DST_DIR = sh.template("./base/icons");
+const SRC_DIR = sh.template(
+    "$REPO_ROOT/extern/expanded/raven_fantasy_icons_free",
+);
+const DST_DIR_ICONS = sh.template("./base/icons");
+const DST_DIR_SPRITES = sh.template("./base/sprites");
 
-const files = {
+const attributionFile = `${SRC_DIR}/attribution.meta.md`;
+
+const iconFiles = {
     "bow": "fb1789.png",
     "sword": "fb1508.png",
     "axe": "fb1778.png",
@@ -27,16 +32,26 @@ const files = {
     "heart": "fb659.png",
 };
 
-sh.mkdir(DST_DIR);
-const attributionFile = `${SRC_DIR}/attribution.meta.md`;
-for (const [name, file] of Object.entries(files)) {
-    const sourcePath = `${SRC_DIR}/${file}`;
-    const outputPath = `${DST_DIR}/${name}.png`;
-    const metaOutputPath = `${DST_DIR}/${name}.meta.md`;
+const spriteFiles = {
+    "coin-gold": "fb131.png",
+    "coin-silver": "fb132.png",
+};
 
-    await sh.copy(sourcePath, outputPath);
-    await sh.copy(attributionFile, metaOutputPath);
-    sh.cprintln(
-        `[:check:](green) built icon [${name}.png](goldenrod)`,
-    );
+async function copyFiles(dstDir: string, files: Record<string, string>) {
+    sh.cprintln(`Building files for ${dstDir}...`);
+    sh.mkdir(dstDir);
+    for (const [name, file] of Object.entries(files)) {
+        const sourcePath = `${SRC_DIR}/${file}`;
+        const outputPath = `${DST_DIR_ICONS}/${name}.png`;
+        const metaOutputPath = `${DST_DIR_ICONS}/${name}.meta.md`;
+
+        await sh.copy(sourcePath, outputPath);
+        await sh.copy(attributionFile, metaOutputPath);
+        sh.cprintln(
+            `[:check:](green) built [${name}.png](goldenrod)`,
+        );
+    }
 }
+
+await copyFiles(DST_DIR_ICONS, iconFiles);
+await copyFiles(DST_DIR_SPRITES, spriteFiles);
