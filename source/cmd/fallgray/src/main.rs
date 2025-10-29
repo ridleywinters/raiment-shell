@@ -9,9 +9,6 @@ use std::collections::{HashMap, HashSet};
 use std::f32::consts::FRAC_PI_2;
 use ui::*;
 
-const PLAYER_LIGHT_OFFSET_1: [f32; 3] = [0.0, 1.5, 4.0];
-const PLAYER_LIGHT_OFFSET_2: [f32; 3] = [0.5, -0.5, 4.0];
-
 #[derive(Serialize, Deserialize)]
 pub struct ItemDefinition {
     pub image: String,
@@ -133,10 +130,9 @@ struct Player {
 }
 
 #[derive(Component)]
-struct PlayerLight;
-
-#[derive(Component)]
-struct PlayerLight2;
+struct PlayerLight {
+    offset: Vec3,
+}
 
 #[derive(Component)]
 struct Billboard;
@@ -353,8 +349,6 @@ fn startup_system(
     }
 
     commands.insert_resource(item_tracker);
-
-    // Insert item definitions as a resource
     commands.insert_resource(item_definitions);
 
     commands.insert_resource(bevy::light::AmbientLight {
@@ -391,11 +385,13 @@ fn startup_system(
             ..default()
         },
         Transform::from_xyz(
-            player_start_pos.x + PLAYER_LIGHT_OFFSET_1[0],
-            player_start_pos.y + PLAYER_LIGHT_OFFSET_1[1],
-            player_start_pos.z + PLAYER_LIGHT_OFFSET_1[2],
+            player_start_pos.x + 0.0,
+            player_start_pos.y + 1.5,
+            player_start_pos.z + 4.0,
         ),
-        PlayerLight, // Marker component to identify this light
+        PlayerLight {
+            offset: Vec3::new(0.0, 1.5, 4.0),
+        },
         LightColorAnimation::default(),
     ));
 
@@ -409,11 +405,13 @@ fn startup_system(
             ..default()
         },
         Transform::from_xyz(
-            player_start_pos.x + PLAYER_LIGHT_OFFSET_2[0],
-            player_start_pos.y + PLAYER_LIGHT_OFFSET_2[1],
-            player_start_pos.z + PLAYER_LIGHT_OFFSET_2[2],
+            player_start_pos.x + 0.5,
+            player_start_pos.y - 0.5,
+            player_start_pos.z + 4.0,
         ),
-        PlayerLight2,
+        PlayerLight {
+            offset: Vec3::new(0.5, -0.5, 4.0),
+        },
     ));
 }
 
@@ -592,31 +590,12 @@ fn update_camera_control_system(
 #[allow(clippy::type_complexity)]
 fn update_player_light(
     player_query: Query<&Transform, With<Player>>,
-    mut light_query: Query<&mut Transform, (With<PlayerLight>, Without<Player>)>,
-    mut light2_query: Query<
-        &mut Transform,
-        (With<PlayerLight2>, Without<Player>, Without<PlayerLight>),
-    >,
+    mut light_query: Query<(&mut Transform, &PlayerLight), Without<Player>>,
 ) {
     if let Ok(player_transform) = player_query.single() {
-        // Update first light with Y offset
-        if let Ok(mut light_transform) = light_query.single_mut() {
-            light_transform.translation = player_transform.translation
-                + Vec3::new(
-                    PLAYER_LIGHT_OFFSET_1[0],
-                    PLAYER_LIGHT_OFFSET_1[1],
-                    PLAYER_LIGHT_OFFSET_1[2],
-                );
-        }
-
-        // Update second light with no Y offset
-        if let Ok(mut light2_transform) = light2_query.single_mut() {
-            light2_transform.translation = player_transform.translation
-                + Vec3::new(
-                    PLAYER_LIGHT_OFFSET_2[0],
-                    PLAYER_LIGHT_OFFSET_2[1],
-                    PLAYER_LIGHT_OFFSET_2[2],
-                );
+        // Update all lights using their offsets
+        for (mut light_transform, player_light) in light_query.iter_mut() {
+            light_transform.translation = player_transform.translation + player_light.offset;
         }
     }
 }
@@ -640,7 +619,7 @@ fn update_player_light_animation(
         anim.time += 0.1 * dt * anim.speed;
 
         let light_yellow = hex_to_color("#e8d599");
-        let red = hex_to_color("#ffb96e");
+        let red = hex_to_color("#e7844fff");
         let yellow_white = hex_to_color("#e4bb6f");
 
         // Create a smooth oscillation through the three colors
