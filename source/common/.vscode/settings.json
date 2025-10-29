@@ -1,6 +1,9 @@
 {
     // This seems like a better default
     "explorer.incrementalNaming": "smart",
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "always"
+    },
 
     // In general, disable inlay hints unless the user explicitly requests them
     "editor.inlayHints.enabled": "offUnlessPressed",

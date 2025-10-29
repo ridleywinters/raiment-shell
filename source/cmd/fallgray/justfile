@@ -1,6 +1,7 @@
+import "../../common/common.justfile"
+
 ensure:
-    @mkdir -p .vscode
-    cp -f ${REPO_ROOT}/source/common/.vscode/settings.json .vscode/settings.json
+    @just ensure-vscode-directory
     @cd ${REPO_ROOT}/source/assets && just build
 
 build: ensure

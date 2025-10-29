@@ -1,14 +1,18 @@
+import "source/common/common.justfile"
+
 [private]
 default:
     @just --list --unsorted
 
-
+ensure:
+    @just ensure-vscode-directory
+    
 # Runs the demo project
 demo:
     echo "TODO"
 
 # Builds all projects
-build:
+build: ensure
     cd source/assets && just build
     cd source/cmd/fallgray && just build
     cd source/cmd/snowfall && just build
