@@ -2,9 +2,11 @@
 
 Fallgray is a long-term, hobby project to create an open source, retro-style, single-player fantasy life simulator role playing game. It is set in the fictional fantasy world of Galthea. It draws inspiration from games like Daggerfall and Barony.
 
-It aims to provide a massive open world, both in game and in lore, that is fun to play and easy for players to contribute to. In-game editors and content repositories make contributions trivial for both novice and expert users. Creating mods and even full new "distributions" are considered a core part of the experience of Fallgray.
+It aims to provide a massive open world, both in game and in lore. While every game should be fun to play, Fallgray also aims to be easy and enjoyable to contribute to. In-game editors and content management should make contributions trivial. Creating mods and even full new "distributions" can be a core part of the experience of Fallgray.
 
-The game is intended to be easy to play but very difficult to "win." As a fantasy life simulator role-playing game, you play as an average person in the world of Galthea seeking to make a life of your own. You can do this by farming, trading, and going on small quests in the local areas. Or you can pursue the grand quest of trying to uncover a way to stop the destructive cosmic force known as the Maelstrom from unraveling the world. The game uses a mix of hand-crafted content with procedural elements to ensure each playthrough is a new variation of the world with subtle influences apparent from prior playthroughs.
+The game is intended to be easy to play but very difficult to "win." You play as an average person in Galthea seeking to make a life of your own. You can do this by farming, trading, engaging in small quests in the town you choose to call home. Or you can join the hapless throngs of self-titled adventurers across the continent pursuing the grand quest to find a way to stop the Maelstrom, a cosmic force growing in power every day that is unraveling the world and reality -- but you're not the chosen one! Don't expect that fate to pay you any particular attention.
+
+The game assembles hand-crafted content together with procedural variations to make every playthrough of the gameboth familiar and unique. And, using a sort of magic within the world of Galthea, the player can sometimes cause specific elements of their world -- friendships, locations, knowledge, boons -- to leak into future realities. Thus, will the impending destruction of the Maelstrom is seemingly inevitable, maybe there is a way to make life a little easier in some future incarnation?
 
 ## Status
 

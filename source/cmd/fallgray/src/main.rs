@@ -835,18 +835,18 @@ fn spawn_apple_on_click(
 
     let intersection = ray.origin + ray.direction * t;
 
-    // Round to nearest grid position
-    let grid_x = (intersection.x / 8.0).floor() as i32;
-    let grid_y = (intersection.y / 8.0).floor() as i32;
+    // Force to a grid of 2x2 units
+    let grid_x = (intersection.x / 2.0).floor() as i32;
+    let grid_y = (intersection.y / 2.0).floor() as i32;
 
     // Check if there's already an apple at this position
     if apple_tracker.positions.contains(&(grid_x, grid_y)) {
         return;
     }
 
-    // Calculate world position (centered in grid cell)
-    let world_x = grid_x as f32 * 8.0 + 4.0;
-    let world_y = grid_y as f32 * 8.0 + 4.0;
+    // Calculate world position
+    let world_x = grid_x as f32 * 2.0 + 1.0;
+    let world_y = grid_y as f32 * 2.0 + 1.0;
 
     // Track the apple
     apple_tracker.positions.insert((grid_x, grid_y));
