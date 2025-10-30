@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-net=download.blender.org --allow-write --allow-read --allow-run=hdiutil,cp
+#!/usr/bin/env -S deno run --allow-net=download.blender.org --allow-write --allow-read --allow-run
 
 import { sh } from "@raiment-shell";
 
@@ -152,11 +152,26 @@ async function main() {
         const path = await downloadTo(url, outputDir);
         sh.cprintln(`Downloaded: [${path}](goldenrod)`);
 
-        // If on macOS and the downloaded file is a DMG, expand it
+        // Extract the archive (platform-dependent)
         if (Deno.build.os === "darwin" && path.endsWith(".dmg")) {
             const expandedPath = await expandDmg(path, outputDir);
             sh.cprintln(`Expanded DMG to: [${expandedPath}](goldenrod)`);
+        } else if (path.endsWith(".tar.xz")) {
+            sh.cprintln(`Extracting tar.xz archive...`);
+            await sh.exec("tar", ["-xJf", path, "-C", outputDir]);
+            const dirName = `${outputDir}/blender-${version}-${tag}`;
+            const lines = [
+                "#!/usr/bin/env bash",
+                `exec "${dirName}/blender" "$@"`,
+                "",
+            ];
+            const launcherPath = `${outputDir}/blender`;
+            await Deno.writeTextFile(launcherPath, lines.join("\n"), {
+                mode: 0o755,
+            });
+            sh.cprintln(`Created launcher script: [${launcherPath}](goldenrod)`);
         }
+
     } catch (err) {
         console.error(
             `Error: ${err instanceof Error ? err.message : String(err)}`,
