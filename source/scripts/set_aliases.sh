@@ -37,6 +37,7 @@ function gcap() {
     pushd $REPO_ROOT
     git add .
     git commit -m "$*"
+    git pull
     git push
     popd
 }
