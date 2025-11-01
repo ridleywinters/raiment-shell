@@ -1,3 +1,4 @@
+export * from "./base/event_emitter.ts";
 export * from "./base/type_of_value.ts";
 export * from "./collections/assign_deep.ts";
 export * from "./colors/named_colors.ts";

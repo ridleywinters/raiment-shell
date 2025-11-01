@@ -1,57 +1,211 @@
 import * as core from "@raiment-core";
-import { type ColorHexString } from "@raiment-core";
-import { invokeDownload, useLocalStorage } from "@raiment-ui";
+import { type ColorHexString, EventEmitter } from "@raiment-core";
+import { invokeDownload, useEventListener } from "@raiment-ui";
 import React, { JSX } from "react";
 
+class Palette {
+    events = new EventEmitter<{ "update": [] }>();
+
+    base: ColorHexString[];
+    colors: {
+        primary: ColorHexString;
+        shade: ColorHexString;
+        highlight: ColorHexString;
+    }[];
+
+    constructor() {
+        this.base = [];
+        this.colors = [];
+    }
+
+    getBase(index: number): ColorHexString {
+        return this.base[index];
+    }
+    setBase(index: number, color: ColorHexString): void {
+        this.base[index] = color;
+        this.events.emit("update");
+    }
+
+    get(row: number, flavor: "primary" | "shade" | "highlight"): ColorHexString {
+        const colorSet = this.colors[row];
+        if (!colorSet) {
+            throw new Error(`No color set for row ${row}`);
+        }
+        return colorSet[flavor];
+    }
+    set(row: number, flavor: "primary" | "shade" | "highlight", color: ColorHexString): void {
+        const colorSet = this.colors[row];
+        if (!colorSet) {
+            throw new Error(`No color set for row ${row}`);
+        }
+        colorSet[flavor] = color;
+        this.events.emit("update");
+    }
+
+    moveRow(index: number, direction: "up" | "down"): void {
+        if (direction === "up" && index > 0) {
+            const temp = this.colors[index - 1];
+            this.colors[index - 1] = this.colors[index];
+            this.colors[index] = temp;
+        } else if (direction === "down" && index < this.colors.length - 1) {
+            const temp = this.colors[index + 1];
+            this.colors[index + 1] = this.colors[index];
+            this.colors[index] = temp;
+        }
+        this.events.emit("update");
+    }
+
+    computeAll(): ColorHexString[] {
+        const all: ColorHexString[] = [];
+        all.push(...this.base);
+        for (let i = 0; i < this.colors.length; i++) {
+            all.push(...this.computeRow(i));
+        }
+        return all;
+    }
+
+    computeRow(i: number): ColorHexString[] {
+        const primary = this.colors[i].primary;
+        const shade = this.colors[i].shade;
+        const highlight = this.colors[i].highlight;
+        const hslPrimary = hexToHSL(primary as string);
+        const hslShade = hexToHSL(shade as string);
+        const hslHighlight = hexToHSL(highlight as string);
+
+        const colors: ColorHexString[] = [];
+
+        // Element 0: shade
+        colors.push(shade);
+
+        // Elements 1-2: blends between shade and primary
+        for (let j = 1; j <= 2; j++) {
+            const a = j / 3;
+            const h = Math.round(hslShade.h * (1 - a) + hslPrimary.h * a);
+            const s = Math.round(hslShade.s * (1 - a) + hslPrimary.s * a);
+            const l = Math.round(hslShade.l * (1 - a) + hslPrimary.l * a);
+            colors.push(hslToHex(h, s, l) as ColorHexString);
+        }
+
+        // Element 3: primary
+        colors.push(primary);
+
+        // Elements 4-5: blends between primary and highlight
+        for (let j = 1; j <= 2; j++) {
+            const a = j / 3;
+            const h = Math.round(hslPrimary.h * (1 - a) + hslHighlight.h * a);
+            const s = Math.round(hslPrimary.s * (1 - a) + hslHighlight.s * a);
+            const l = Math.round(hslPrimary.l * (1 - a) + hslHighlight.l * a);
+            colors.push(hslToHex(h, s, l) as ColorHexString);
+        }
+
+        // Element 6: highlight
+        colors.push(highlight);
+
+        return colors;
+    }
+}
+
+function convertGPLToPalette(gplColors: ColorHexString[]): Palette {
+    const palette = new Palette();
+
+    for (let i = 0; i < 7 && i < gplColors.length; i++) {
+        palette.base.push(gplColors[i]);
+    }
+    let rows = 0;
+    for (let i = 7; i < gplColors.length && rows < 15; i += 7, rows += 1) {
+        const chunk = gplColors.slice(i, i + 7);
+        if (chunk.length < 7) {
+            chunk.push(...Array(7 - chunk.length).fill("#000000"));
+        }
+        palette.colors.push({
+            primary: chunk[3],
+            shade: chunk[0],
+            highlight: chunk[6],
+        });
+    }
+    return palette;
+}
+
+class ServerAPI {
+    async readFile(path: string, format: "text" | "yaml" | "json"): Promise<string | object> {
+        const resp = await fetch("/api/read-file", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ path, format }),
+        });
+        if (!resp.ok) {
+            throw new Error(`Failed to read file: ${resp.statusText}`);
+        }
+        if (format === "text") {
+            return await resp.text();
+        } else if (format === "yaml" || format === "json") {
+            return await resp.json();
+        } else {
+            throw new Error(`Unsupported format: ${format}`);
+        }
+    }
+
+    async writeFile(
+        path: string,
+        content: string,
+        format: "text" | "yaml" | "json",
+    ): Promise<void> {
+        const resp = await fetch("/api/write-file", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                path,
+                content,
+                format,
+            }),
+        });
+        if (!resp.ok) {
+            throw new Error(`Failed to write file: ${resp.statusText}`);
+        }
+    }
+}
+
+const serverAPI = new ServerAPI();
+
 export function AppView(): JSX.Element {
+    const [palette, setPalette] = React.useState<Palette | null>(null);
+
     React.useEffect(() => {
         const go = async () => {
-            const resp = await fetch("/palette.gpl");
-            const gplContent = await resp.text();
+            const gplContent = await serverAPI.readFile("palette/palette.gpl", "text") as string;
             const colors = core.parseGIMPPalette(gplContent);
-            console.log(colors);
+            const pal = convertGPLToPalette(colors ?? []);
+            setPalette(pal);
         };
         go();
     }, []);
 
-    return <AppView2 />;
+    if (!palette) {
+        return <div>Loading palette...</div>;
+    }
+
+    return <AppView2 palette={palette} />;
 }
 
-function AppView2(): JSX.Element {
-    const rowCount = 20;
-    const [allRowColors, setAllRowColors] = React.useState<string[][]>([]);
-    const [rowOrder, setRowOrder] = React.useState<number[]>(() =>
-        Array.from({ length: rowCount }, (_, i) => i)
-    );
-
-    const updateRowColors = React.useCallback((rowIndex: number, colors: string[]) => {
-        setAllRowColors((prev) => {
-            const updated = [...prev];
-            updated[rowIndex] = colors;
-            return updated;
-        });
-    }, []);
-
-    const moveRow = React.useCallback((fromIndex: number, toIndex: number) => {
-        setRowOrder((prev) => {
-            const updated = [...prev];
-            const [movedItem] = updated.splice(fromIndex, 1);
-            updated.splice(toIndex, 0, movedItem);
-            return updated;
-        });
-    }, []);
-
-    // Reorder colors based on rowOrder
-    const orderedColors = rowOrder.map((originalIndex) => allRowColors[originalIndex]).filter(
-        Boolean,
-    );
+function AppView2({ palette }: { palette: Palette }): JSX.Element {
+    useEventListener(palette.events, "update");
 
     const exportGPL = React.useCallback(() => {
-        // Flatten all colors into a single array
-        const allColors = orderedColors.flat() as ColorHexString[];
-        const gplContent = core.stringifyGIMPPalette(allColors);
+        const colors = palette.computeAll();
+        const gplContent = core.stringifyGIMPPalette(colors);
         invokeDownload("palette.gpl", gplContent, "text/plain");
-    }, [orderedColors]);
+    }, [palette]);
+
+    const savePalette = React.useCallback(async () => {
+        const colors = palette.computeAll();
+        const gplContent = core.stringifyGIMPPalette(colors);
+        await serverAPI.writeFile("palette/palette.gpl", gplContent, "text");
+        alert("Palette saved successfully.");
+    }, [palette]);
 
     return (
         <div style={{ margin: 16 }}>
@@ -72,236 +226,151 @@ function AppView2(): JSX.Element {
                 >
                     Export Palette
                 </button>
-            </div>
-            <div
-                style={{
-                    display: "flex",
-                    flexDirection: "row",
-                    gap: "16px",
-                }}
-            >
-                <div
+
+                <button
+                    type="button"
+                    onClick={savePalette}
                     style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "4px",
-                        margin: "16px",
+                        padding: "8px 16px",
+                        fontSize: "14px",
+                        cursor: "pointer",
+                        backgroundColor: "#4CAF50",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
                     }}
                 >
-                    {rowOrder.map((originalIndex, displayIndex) => (
-                        <ColorRow
-                            key={originalIndex}
-                            rowIndex={originalIndex}
-                            displayIndex={displayIndex}
-                            storageKey={`palette-row${originalIndex + 1}`}
-                            onColorsChange={updateRowColors}
-                            onMoveUp={displayIndex > 0
-                                ? () => moveRow(displayIndex, displayIndex - 1)
-                                : undefined}
-                            onMoveDown={displayIndex < rowCount - 1
-                                ? () => moveRow(displayIndex, displayIndex + 1)
-                                : undefined}
-                        />
-                    ))}
+                    Save Palette
+                </button>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "row", gap: "32px" }}>
+                <div>
+                    <div
+                        style={{
+                            display: "flex",
+                            flexDirection: "row",
+                            gap: "8px",
+                            marginBottom: "16px",
+                        }}
+                    >
+                        {palette.base.map((_color, idx) => (
+                            <ColorPicker
+                                key={idx}
+                                value={palette.getBase(idx)}
+                                onChange={(newColor) => {
+                                    palette.setBase(idx, newColor);
+                                }}
+                            />
+                        ))}
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", marginBottom: "16px" }}>
+                        {palette.colors.map((colorSet, idx) => (
+                            <div
+                                key={idx}
+                                style={{
+                                    display: "flex",
+                                    flexDirection: "row",
+                                    gap: "8px",
+                                    marginBottom: "4px",
+                                }}
+                            >
+                                <ColorPicker
+                                    value={palette.get(idx, "primary")}
+                                    onChange={(newColor) => {
+                                        palette.set(idx, "primary", newColor);
+                                    }}
+                                />
+                                <div style={{ width: "12px" }} />
+                                <ColorPicker
+                                    value={palette.get(idx, "shade")}
+                                    onChange={(newColor) => {
+                                        palette.set(idx, "shade", newColor);
+                                    }}
+                                />
+                                <ColorPicker
+                                    value={palette.get(idx, "highlight")}
+                                    onChange={(newColor) => {
+                                        palette.set(idx, "highlight", newColor);
+                                    }}
+                                />
+                                <div style={{ width: "24px" }} />
+                                {palette.computeRow(idx).map((color, cidx) => (
+                                    <div
+                                        key={cidx}
+                                        style={{
+                                            width: "32px",
+                                            height: "32px",
+                                            backgroundColor: color,
+                                            border: "1px solid #444",
+                                            cursor: "pointer",
+                                        }}
+                                        onClick={async () => {
+                                            try {
+                                                await navigator.clipboard.writeText(color);
+                                                console.log(`Copied ${color} to clipboard`);
+                                            } catch (err) {
+                                                console.error(
+                                                    "Failed to copy color to clipboard:",
+                                                    err,
+                                                );
+                                            }
+                                        }}
+                                    />
+                                ))}
+                                <button
+                                    type="button"
+                                    onClick={() => palette.moveRow(idx, "up")}
+                                    style={{
+                                        padding: "4px 8px",
+                                        cursor: "pointer",
+                                        border: "none",
+                                        background: "transparent",
+                                        color: "#555",
+                                    }}
+                                >
+                                    ▲
+                                </button>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-                <PaletteCanvas allColors={orderedColors} />
+                <div>
+                    {/* Placeholder for additional data */}
+                </div>
+            </div>
+            <div>
+                Color count: {palette.computeAll().length}
             </div>
         </div>
     );
 }
 
-function PaletteCanvas({ allColors }: { allColors: string[][] }): JSX.Element {
-    const canvasRef = React.useRef<HTMLCanvasElement>(null);
-
-    const blockSize = 32;
-    const rowCount = allColors.length;
-    const colCount = allColors[0]?.length || 0;
-    const canvasWidth = colCount * blockSize;
-    const canvasHeight = rowCount * blockSize;
-
-    React.useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-
-        // Clear canvas
-        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-
-        allColors.forEach((row, rowIndex) => {
-            row.forEach((color, colIndex) => {
-                ctx.fillStyle = color;
-                ctx.fillRect(
-                    colIndex * blockSize,
-                    rowIndex * blockSize,
-                    blockSize,
-                    blockSize,
-                );
-            });
-        });
-    }, [allColors, canvasWidth, canvasHeight]);
-
-    return (
-        <div style={{ margin: "16px" }}>
-            <canvas
-                ref={canvasRef}
-                width={canvasWidth}
-                height={canvasHeight}
-                style={{
-                    border: "1px solid #000000",
-                    imageRendering: "pixelated",
-                }}
-            />
-        </div>
-    );
-}
-
-/**
- * Computes the color gradient for a row based on three key colors
- */
-function computeRowColors(color1: string, color2: string, color3: string): string[] {
-    const hsl1 = hexToHSL(color1);
-    const hsl2 = hexToHSL(color2);
-    const hsl3 = hexToHSL(color3);
-
-    const colors: string[] = [];
-
-    // Element 0: color1
-    colors.push(color1);
-
-    // Elements 1-2: blends between color1 and color2
-    for (let i = 1; i <= 2; i++) {
-        const a = i / 3;
-        const h = Math.round(hsl1.h * (1 - a) + hsl2.h * a);
-        const s = Math.round(hsl1.s * (1 - a) + hsl2.s * a);
-        const l = Math.round(hsl1.l * (1 - a) + hsl2.l * a);
-        colors.push(hslToHex(h, s, l));
-    }
-
-    // Element 3: color2
-    colors.push(color2);
-
-    // Elements 4-5: blends between color2 and color3
-    for (let i = 1; i <= 2; i++) {
-        const a = i / 3;
-        const h = Math.round(hsl2.h * (1 - a) + hsl3.h * a);
-        const s = Math.round(hsl2.s * (1 - a) + hsl3.s * a);
-        const l = Math.round(hsl2.l * (1 - a) + hsl3.l * a);
-        colors.push(hslToHex(h, s, l));
-    }
-
-    // Element 6: color3
-    colors.push(color3);
-
-    return colors;
-}
-
-function ColorRow({
-    rowIndex,
-    displayIndex,
-    storageKey,
-    onColorsChange,
-    onMoveUp,
-    onMoveDown,
+function ColorPicker({
+    value,
+    onChange,
 }: {
-    rowIndex: number;
-    displayIndex: number;
-    storageKey: string;
-    onColorsChange: (rowIndex: number, colors: string[]) => void;
-    onMoveUp?: () => void;
-    onMoveDown?: () => void;
+    value: ColorHexString;
+    onChange: (newColor: ColorHexString) => void;
 }): JSX.Element {
-    const [color1, setColor1] = useLocalStorage(`${storageKey}-color1`, "#000000");
-    const [color2, setColor2] = useLocalStorage(`${storageKey}-color2`, "#1072C0");
-    const [color3, setColor3] = useLocalStorage(`${storageKey}-color3`, "#ffffff");
-
-    // Compute colors whenever the input colors change
-    const colors = computeRowColors(color1, color2, color3);
-
-    // Notify parent of color changes
-    React.useEffect(() => {
-        onColorsChange(rowIndex, colors);
-    }, [rowIndex, color1, color2, color3, onColorsChange]);
+    const timeoutRef = React.useRef<number | null>(null);
+    const handleChange = React.useCallback((evt: React.ChangeEvent<HTMLInputElement>) => {
+        const newColor = evt.target.value as ColorHexString;
+        if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+        }
+        timeoutRef.current = setTimeout(() => {
+            onChange(newColor);
+        }, 200);
+    }, [onChange]);
 
     return (
-        <div
-            style={{
-                display: "flex",
-                flexDirection: "row",
-                gap: "8px",
-                alignItems: "center",
-            }}
-        >
-            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                <button
-                    type="button"
-                    onClick={onMoveUp}
-                    disabled={!onMoveUp}
-                    style={{
-                        width: "24px",
-                        height: "18px",
-                        padding: "0",
-                        fontSize: "12px",
-                        cursor: onMoveUp ? "pointer" : "not-allowed",
-                        opacity: onMoveUp ? 1 : 0.3,
-                    }}
-                    title="Move up"
-                >
-                    ▲
-                </button>
-                <button
-                    type="button"
-                    onClick={onMoveDown}
-                    disabled={!onMoveDown}
-                    style={{
-                        width: "24px",
-                        height: "18px",
-                        padding: "0",
-                        fontSize: "12px",
-                        cursor: onMoveDown ? "pointer" : "not-allowed",
-                        opacity: onMoveDown ? 1 : 0.3,
-                    }}
-                    title="Move down"
-                >
-                    ▼
-                </button>
-            </div>
+        <div>
             <input
                 type="color"
-                value={color2}
-                onChange={(e) => {
-                    const inputHsl = hexToHSL(e.target.value);
-
-                    // Color1: reduce lightness by 50%
-                    const color1Hsl = {
-                        ...inputHsl,
-                        l: Math.min(Math.max(5, inputHsl.l - 50), 100),
-                    };
-
-                    const color3Hsl = {
-                        ...inputHsl,
-                        l: Math.min(Math.max(5, inputHsl.l + 50), 100),
-                    };
-
-                    setColor2(e.target.value);
-                    setColor1(hslToHex(color1Hsl.h, color1Hsl.s, color1Hsl.l));
-                    setColor3(hslToHex(color3Hsl.h, color3Hsl.s, color3Hsl.l));
-                }}
+                value={value}
+                onChange={handleChange}
             />
-            <input type="color" value={color1} onChange={(e) => setColor1(e.target.value)} />
-            <input type="color" value={color3} onChange={(e) => setColor3(e.target.value)} />
-            {colors.map((color, idx) => (
-                <div
-                    key={idx}
-                    style={{
-                        width: "40px",
-                        height: "40px",
-                        backgroundColor: color,
-                        border: "1px solid #000000",
-                    }}
-                />
-            ))}
         </div>
     );
 }

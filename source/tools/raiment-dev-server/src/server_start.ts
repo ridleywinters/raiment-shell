@@ -1,4 +1,6 @@
 import { cprintln } from "@raiment-shell";
+import { handleAPIReadFile } from "./handle_api_read_file.ts";
+import { handleAPIWriteFile } from "./handle_api_write_file.ts";
 import { handleServerSideEvents, SSEClientSet } from "./handle_server_side_events.ts";
 import { handleStaticFiles } from "./handle_static_files.ts";
 import { handleStatus } from "./handle_status.ts";
@@ -45,7 +47,9 @@ export async function serverStart(options: ServerOptions) {
 
     const handlers: [HandlerPattern, (request: Request) => Promise<Response>][] = [
         ["/status", handleStatus],
-        ["/api/events", (req) => handleServerSideEvents(clients)],
+        ["/api/events", () => handleServerSideEvents(clients)],
+        ["/api/read-file", (req) => handleAPIReadFile(req, { baseDir: "./data" })],
+        ["/api/write-file", (req) => handleAPIWriteFile(req, { baseDir: "./data" })],
         [/.*/, (req) => handleStaticFiles("./dist", req)],
     ];
 

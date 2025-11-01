@@ -6,6 +6,7 @@
         "@raiment-shell": "../../modules/raiment-shell/mod.ts",
         "@std/fmt": "jsr:@std/fmt@^1.0.8",
         "@std/fs": "jsr:@std/fs@^1.0.19",
+        "@std/path": "jsr:@std/path@^1.1.2",
         "@std/random": "jsr:@std/random@^0.1.3",
         "@std/yaml": "jsr:@std/yaml@^1.0.10",
         "react": "npm:react@^19.2.0",
