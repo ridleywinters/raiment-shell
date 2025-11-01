@@ -20,6 +20,9 @@
         }
     },
 
+    // Deno-related
+    "deno.enable": true,
+
     // Disable the rust-analyzer features that clutter the editor experience
     "rust-analyzer.lens.enable": false,
     "rust-analyzer.inlayHints.typeHints.enable": false,
@@ -39,5 +42,22 @@
 
     "workbench.colorCustomizations": {
         "editor.background": "#171717"
+    },
+
+    // Formatter configuration
+    "[markdown]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "denoland.vscode-deno"
+    },
+    "[typescriptreact]": {
+        "editor.defaultFormatter": "denoland.vscode-deno"
+    },
+    "[javascript]": {
+        "editor.defaultFormatter": "denoland.vscode-deno"
+    },
+    "[javascriptreact]": {
+        "editor.defaultFormatter": "denoland.vscode-deno"
     }
 }

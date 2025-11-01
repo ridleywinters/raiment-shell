@@ -1,14 +1,14 @@
-import { JSX, useCallback, useEffect, useRef, useState } from "react";
-import { useLocalStorage } from "./use_local_storage.tsx";
+import { useLocalStorage } from "@raiment-ui";
+import React, { JSX } from "react";
 
 export function AppView(): JSX.Element {
     const rowCount = 20;
-    const [allRowColors, setAllRowColors] = useState<string[][]>([]);
-    const [rowOrder, setRowOrder] = useState<number[]>(() =>
+    const [allRowColors, setAllRowColors] = React.useState<string[][]>([]);
+    const [rowOrder, setRowOrder] = React.useState<number[]>(() =>
         Array.from({ length: rowCount }, (_, i) => i)
     );
 
-    const updateRowColors = useCallback((rowIndex: number, colors: string[]) => {
+    const updateRowColors = React.useCallback((rowIndex: number, colors: string[]) => {
         setAllRowColors((prev) => {
             const updated = [...prev];
             updated[rowIndex] = colors;
@@ -16,7 +16,7 @@ export function AppView(): JSX.Element {
         });
     }, []);
 
-    const moveRow = useCallback((fromIndex: number, toIndex: number) => {
+    const moveRow = React.useCallback((fromIndex: number, toIndex: number) => {
         setRowOrder((prev) => {
             const updated = [...prev];
             const [movedItem] = updated.splice(fromIndex, 1);
@@ -30,7 +30,7 @@ export function AppView(): JSX.Element {
         Boolean,
     );
 
-    const exportGPL = useCallback(() => {
+    const exportGPL = React.useCallback(() => {
         // Flatten all colors into a single array
         const allColors = orderedColors.flat();
 
@@ -117,7 +117,7 @@ export function AppView(): JSX.Element {
 }
 
 function PaletteCanvas({ allColors }: { allColors: string[][] }): JSX.Element {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const canvasRef = React.useRef<HTMLCanvasElement>(null);
 
     const blockSize = 32;
     const rowCount = allColors.length;
@@ -125,7 +125,7 @@ function PaletteCanvas({ allColors }: { allColors: string[][] }): JSX.Element {
     const canvasWidth = colCount * blockSize;
     const canvasHeight = rowCount * blockSize;
 
-    useEffect(() => {
+    React.useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
 
@@ -226,7 +226,7 @@ function ColorRow({
     const colors = computeRowColors(color1, color2, color3);
 
     // Notify parent of color changes
-    useEffect(() => {
+    React.useEffect(() => {
         onColorsChange(rowIndex, colors);
     }, [rowIndex, color1, color2, color3, onColorsChange]);
 

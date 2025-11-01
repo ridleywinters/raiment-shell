@@ -1,0 +1,16 @@
+{
+  "version": "5",
+  "specifiers": {
+    "npm:react@^19.2.0": "19.2.0"
+  },
+  "npm": {
+    "react@19.2.0": {
+      "integrity": "sha512-tmbWg6W31tQLeB5cdIBOicJDJRR2KzXsV7uSK9iNfLWQ5bIZfxuPEHp7M8wiHyHnn0DD1i7w3Zmin0FtkrwoCQ=="
+    }
+  },
+  "workspace": {
+    "dependencies": [
+      "npm:react@^19.2.0"
+    ]
+  }
+}
