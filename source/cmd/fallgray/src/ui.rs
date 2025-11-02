@@ -1,5 +1,6 @@
 use crate::console::ConsoleState;
 use crate::texture_loader::load_image_texture;
+use crate::ui_styles::EntityCommandsUIExt;
 use bevy::prelude::*;
 
 #[derive(Resource)]
@@ -49,140 +50,69 @@ pub fn startup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.insert_resource(PlayerStats::default());
     commands.insert_resource(Toolbar::default());
 
-    // PICO-8 colors
-    let pico8_red = Color::srgb(1.0, 0.0, 0.3);
-    let pico8_green = Color::srgb(0.0, 0.89, 0.21);
+    let container_style = vec![
+        "flex-row-center gap10 p8", //
+        "bg-rgba(0.2,0.2,0.2,0.8)",
+    ];
+    let icon_style = vec!["width-20 height-20"];
+    let bar_style = vec![
+        "width-200 height-20", //
+        "bg-rgba(0.2,0.2,0.2,1.0)",
+        "outline-width-1 outline-rgb(0.25,0.25,0.25)",
+    ];
+    let pico8_red = "bg-rgb(1.0,0.0,0.3)";
+    let pico8_green = "bg-rgb(0.0,0.89,0.21)";
 
     // Status bars at bottom left
     commands
-        .spawn(Node {
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            justify_content: JustifyContent::FlexStart,
-            align_items: AlignItems::FlexEnd,
-            padding: UiRect::all(Val::Px(8.0)),
-            position_type: PositionType::Absolute,
-            ..default()
-        })
+        .spawn_empty()
+        .styles(&vec![
+            "absolute width-100% height-100% p8",
+            "justify-start align-end",
+        ])
         .with_children(|parent| {
             // Container for status bars
             parent
-                .spawn((
-                    Node {
-                        flex_direction: FlexDirection::Column,
-                        row_gap: Val::Px(2.0),
-                        ..default()
-                    },
-                    Interaction::default(),
-                ))
+                .spawn(Interaction::default())
+                .styles(&vec!["flex-col gap2"])
                 .with_children(|parent| {
-                    // Health bar with its own background
-                    parent
-                        .spawn((
-                            Node {
-                                flex_direction: FlexDirection::Row,
-                                align_items: AlignItems::Center,
-                                column_gap: Val::Px(10.0),
-                                padding: UiRect::all(Val::Px(8.0)),
-                                ..default()
-                            },
-                            BackgroundColor(Color::srgba(0.2, 0.2, 0.2, 0.8)),
-                        ))
+                    parent // Health bar
+                        .spawn_empty()
+                        .styles(&container_style)
                         .with_children(|parent| {
-                            // Heart icon
-                            parent.spawn((
-                                ImageNode::new(load_image_texture(
+                            parent
+                                .spawn(ImageNode::new(load_image_texture(
                                     &asset_server,
                                     "base/icons/heart.png",
-                                )),
-                                Node {
-                                    width: Val::Px(20.0),
-                                    height: Val::Px(20.0),
-                                    ..default()
-                                },
-                            ));
-
-                            // Bar background
+                                )))
+                                .styles(&icon_style);
                             parent
-                                .spawn((
-                                    Node {
-                                        width: Val::Px(200.0),
-                                        height: Val::Px(20.0),
-                                        ..default()
-                                    },
-                                    BackgroundColor(Color::srgb(0.2, 0.2, 0.2)),
-                                    Outline {
-                                        width: Val::Px(1.0),
-                                        offset: Val::Px(0.0),
-                                        color: Color::srgb(0.25, 0.25, 0.25),
-                                    },
-                                ))
+                                .spawn_empty()
+                                .styles(&bar_style)
                                 .with_children(|parent| {
-                                    // Bar fill
-                                    parent.spawn((
-                                        Node {
-                                            width: Val::Percent(100.0),
-                                            height: Val::Percent(100.0),
-                                            ..default()
-                                        },
-                                        BackgroundColor(pico8_red),
-                                        HealthBar,
-                                    ));
+                                    parent
+                                        .spawn(HealthBar)
+                                        .styles(&vec!["width-100% height-100%", pico8_red]);
                                 });
                         });
 
-                    // Fatigue bar with its own background
-                    parent
-                        .spawn((
-                            Node {
-                                flex_direction: FlexDirection::Row,
-                                align_items: AlignItems::Center,
-                                column_gap: Val::Px(10.0),
-                                padding: UiRect::all(Val::Px(8.0)),
-                                ..default()
-                            },
-                            BackgroundColor(Color::srgba(0.2, 0.2, 0.2, 0.8)),
-                        ))
+                    parent // Fatigue bar
+                        .spawn_empty()
+                        .styles(&container_style)
                         .with_children(|parent| {
-                            // Foot icon
-                            parent.spawn((
-                                ImageNode::new(load_image_texture(
+                            parent
+                                .spawn((ImageNode::new(load_image_texture(
                                     &asset_server,
                                     "base/icons/foot.png",
-                                )),
-                                Node {
-                                    width: Val::Px(20.0),
-                                    height: Val::Px(20.0),
-                                    ..default()
-                                },
-                            ));
-
-                            // Bar background
+                                )),))
+                                .styles(&icon_style);
                             parent
-                                .spawn((
-                                    Node {
-                                        width: Val::Px(200.0),
-                                        height: Val::Px(20.0),
-                                        ..default()
-                                    },
-                                    BackgroundColor(Color::srgb(0.2, 0.2, 0.2)),
-                                    Outline {
-                                        width: Val::Px(1.0),
-                                        offset: Val::Px(0.0),
-                                        color: Color::srgb(0.25, 0.25, 0.25),
-                                    },
-                                ))
+                                .spawn_empty()
+                                .styles(&bar_style)
                                 .with_children(|parent| {
-                                    // Bar fill
-                                    parent.spawn((
-                                        Node {
-                                            width: Val::Percent(100.0),
-                                            height: Val::Percent(100.0),
-                                            ..default()
-                                        },
-                                        BackgroundColor(pico8_green),
-                                        FatigueBar,
-                                    ));
+                                    parent
+                                        .spawn(FatigueBar)
+                                        .styles(&vec!["width-100% height-100%", pico8_green]);
                                 });
                         });
                 });
@@ -190,25 +120,13 @@ pub fn startup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     // Gold text (keeping at top for now)
     commands
-        .spawn(Node {
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            justify_content: JustifyContent::FlexStart,
-            align_items: AlignItems::FlexStart,
-            padding: UiRect::all(Val::Px(20.0)),
-            position_type: PositionType::Absolute,
-            ..default()
-        })
+        .spawn_empty()
+        .style("width-100% height-100% justify-start align-start p20 absolute")
         .with_children(|parent| {
-            parent.spawn((
-                Text::new("Gold: 0"),
-                TextFont {
-                    font_size: 16.0,
-                    ..default()
-                },
-                TextColor(Color::WHITE),
-                GoldText,
-            ));
+            parent
+                .spawn(GoldText)
+                .text("Gold: 0")
+                .style("font-size-16 fg-white");
         });
 
     // Toolbar icons
@@ -236,38 +154,18 @@ pub fn startup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     // Toolbar at the bottom center
     commands
-        .spawn(Node {
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::FlexEnd,
-            padding: UiRect::all(Val::Px(8.0)),
-            position_type: PositionType::Absolute,
-            ..default()
-        })
+        .spawn_empty()
+        .style("width-100% height-100% justify-center align-end p8 absolute")
         .with_children(|parent| {
             // Toolbar container with interaction area and margin
             parent
-                .spawn((
-                    Node {
-                        flex_direction: FlexDirection::Row,
-                        column_gap: Val::Px(4.0),
-                        padding: UiRect::all(Val::Px(4.0)),
-                        ..default()
-                    },
-                    Interaction::default(),
-                ))
+                .spawn(Interaction::default())
+                .style("flex-row gap4 p4")
                 .with_children(|parent| {
                     // Create 10 toolbar slots (1-9, then 0 for the 10th slot)
                     for i in 0..10 {
                         // Map visual position to slot number: pos 0->slot 1, pos 1->slot 2, ..., pos 9->slot 0
                         let slot_number = if i == 9 { 0 } else { i + 1 };
-
-                        let outline_color = if slot_number == 1 {
-                            Color::WHITE
-                        } else {
-                            Color::srgb(0.4, 0.4, 0.4)
-                        };
 
                         // Get icon for this slot (wrap if index exceeds array length)
                         let icon_name = toolbar_icons[i % toolbar_icons.len()];
@@ -276,53 +174,30 @@ pub fn startup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
 
                         parent
                             .spawn((
-                                Node {
-                                    width: Val::Px(64.0),
-                                    height: Val::Px(64.0),
-                                    padding: UiRect::all(Val::Px(4.0)),
-                                    justify_content: JustifyContent::Center,
-                                    align_items: AlignItems::Center,
-                                    position_type: PositionType::Relative,
-                                    ..default()
-                                },
-                                BackgroundColor(Color::srgba(0.2, 0.2, 0.2, 0.8)),
-                                Outline {
-                                    width: Val::Px(2.0),
-                                    offset: Val::Px(0.0),
-                                    color: outline_color,
-                                },
                                 ToolbarSlot {
                                     slot_index: slot_number,
                                 },
                                 Interaction::default(),
                             ))
+                            .styles(&vec![
+                                "width-64 height-64 p4 justify-center align-center relative",
+                                "bg-rgba(0.2,0.2,0.2,0.8)",
+                                "outline-width-2",
+                                if slot_number == 1 {
+                                    "outline-rgb(1.0,1.0,1.0)"
+                                } else {
+                                    "outline-rgb(0.4,0.4,0.4)"
+                                },
+                            ])
                             .with_children(|parent| {
-                                // Icon for this slot
-                                parent.spawn((
-                                    ImageNode::new(icon_image),
-                                    Node {
-                                        width: Val::Px(48.0),
-                                        height: Val::Px(48.0),
-                                        ..default()
-                                    },
-                                ));
-
-                                // Numeric label (1-9, 0 for slot 9)
+                                parent
+                                    .spawn((ImageNode::new(icon_image),))
+                                    .style("width-48 height-48");
                                 let label_text = if i == 9 { "0" } else { &(i + 1).to_string() };
-                                parent.spawn((
-                                    Text::new(label_text),
-                                    TextFont {
-                                        font_size: 14.0,
-                                        ..default()
-                                    },
-                                    TextColor(Color::WHITE),
-                                    Node {
-                                        position_type: PositionType::Absolute,
-                                        top: Val::Px(2.0),
-                                        left: Val::Px(2.0),
-                                        ..default()
-                                    },
-                                ));
+                                parent
+                                    .spawn_empty()
+                                    .text(label_text)
+                                    .style("font-size-14 fg-white absolute top-2 left-2");
                             });
                     }
                 });

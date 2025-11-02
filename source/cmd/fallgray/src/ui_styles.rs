@@ -3,12 +3,17 @@ use regex::Regex;
 use std::sync::LazyLock;
 
 pub trait EntityCommandsUIExt {
-    fn styles(self, styles: Vec<&str>) -> Self;
+    fn style(self, style: &str) -> Self;
+    fn styles(self, styles: &Vec<&str>) -> Self;
     fn text(self, content: &str) -> Self;
 }
 
 impl<'a> EntityCommandsUIExt for EntityCommands<'a> {
-    fn styles(mut self, styles: Vec<&str>) -> Self {
+    fn style(mut self, style: &str) -> Self {
+        node_style(&mut self, style);
+        self
+    }
+    fn styles(mut self, styles: &Vec<&str>) -> Self {
         node_style(&mut self, styles.join(" ").as_str());
         self
     }
@@ -18,18 +23,22 @@ impl<'a> EntityCommandsUIExt for EntityCommands<'a> {
     }
 }
 
+#[derive(Default)]
 struct StyledBundle {
     node: Node,
     z_index: Option<ZIndex>,
     background_color: Option<BackgroundColor>,
     text_font: Option<TextFont>,
     text_color: Option<TextColor>,
+    outline: Option<Outline>,
 }
 
 enum StyleHandler {
     Void(fn(&mut StyledBundle)),
     I32(fn(&mut StyledBundle, i32)),
     F32(fn(&mut StyledBundle, f32)),
+    Str(fn(&mut StyledBundle, &str)),
+    F32F32F32(fn(&mut StyledBundle, f32, f32, f32)),
     F32F32F32F32(fn(&mut StyledBundle, f32, f32, f32, f32)),
 }
 
@@ -43,6 +52,12 @@ static COMPILED_PATTERNS: LazyLock<Vec<(Regex, StyleHandler)>> = LazyLock::new(|
             "absolute",
             Void(|b| {
                 b.node.position_type = PositionType::Absolute;
+            }),
+        ),
+        (
+            "relative",
+            Void(|b| {
+                b.node.position_type = PositionType::Relative;
             }),
         ),
         (
@@ -143,6 +158,34 @@ static COMPILED_PATTERNS: LazyLock<Vec<(Regex, StyleHandler)>> = LazyLock::new(|
                 b.node.flex_grow = v as f32;
             }),
         ),
+        (
+            r"align-(start|center|end)",
+            Str(|b, v| {
+                b.node.align_items = match v {
+                    "start" => AlignItems::FlexStart,
+                    "center" => AlignItems::Center,
+                    "end" => AlignItems::FlexEnd,
+                    _ => {
+                        log::warn!("Invalid align value: {}", v);
+                        AlignItems::FlexStart
+                    }
+                };
+            }),
+        ),
+        (
+            r"justify-(start|center|end)",
+            Str(|b, v| {
+                b.node.justify_content = match v {
+                    "start" => JustifyContent::FlexStart,
+                    "center" => JustifyContent::Center,
+                    "end" => JustifyContent::FlexEnd,
+                    _ => {
+                        log::warn!("Invalid justify value: {}", v);
+                        JustifyContent::FlexStart
+                    }
+                };
+            }),
+        ),
         //
         // Overflow
         //
@@ -218,7 +261,14 @@ static COMPILED_PATTERNS: LazyLock<Vec<(Regex, StyleHandler)>> = LazyLock::new(|
         // Color
         //
         (
-            r"bg-srgba-\(([\d\.]+),([\d\.]+),([\d\.]+),([\d\.]+)\)",
+            r"bg-rgb\(([\d\.]+),([\d\.]+),([\d\.]+)\)",
+            F32F32F32(|bundle, r, g, b| {
+                let color = Color::srgb(r, g, b);
+                bundle.background_color = Some(BackgroundColor(color));
+            }),
+        ),
+        (
+            r"bg-rgba\(([\d\.]+),([\d\.]+),([\d\.]+),([\d\.]+)\)",
             F32F32F32F32(|bundle, r, g, b, a| {
                 let color = Color::srgba(r, g, b, a);
                 bundle.background_color = Some(BackgroundColor(color));
@@ -231,10 +281,40 @@ static COMPILED_PATTERNS: LazyLock<Vec<(Regex, StyleHandler)>> = LazyLock::new(|
             }),
         ),
         (
-            r"fg-srgba-\(([\d\.]+),([\d\.]+),([\d\.]+),([\d\.]+)\)",
+            r"fg-rgb\(([\d\.]+),([\d\.]+),([\d\.]+)\)",
+            F32F32F32(|bundle, r, g, b| {
+                let color = Color::srgb(r, g, b);
+                bundle.text_color = Some(TextColor(color));
+            }),
+        ),
+        (
+            r"fg-rgba\(([\d\.]+),([\d\.]+),([\d\.]+),([\d\.]+)\)",
             F32F32F32F32(|bundle, r, g, b, a| {
                 let color = Color::srgba(r, g, b, a);
                 bundle.text_color = Some(TextColor(color));
+            }),
+        ),
+        //
+        // Outlines
+        //
+        (
+            r"outline-width-([\d\.]+)",
+            F32(|b, v| {
+                b.outline.get_or_insert_with(Outline::default).width = Val::Px(v);
+            }),
+        ),
+        (
+            r"outline-rgb\(([\d\.]+),([\d\.]+),([\d\.]+)\)",
+            F32F32F32(|bundle, r, g, b| {
+                let color = Color::srgb(r, g, b);
+                bundle.outline.get_or_insert_with(Outline::default).color = color;
+            }),
+        ),
+        (
+            r"outline-rgba\(([\d\.]+),([\d\.]+),([\d\.]+),([\d\.]+)\)",
+            F32F32F32F32(|bundle, r, g, b, a| {
+                let color = Color::srgba(r, g, b, a);
+                bundle.outline.get_or_insert_with(Outline::default).color = color;
             }),
         ),
         //
@@ -262,13 +342,7 @@ static COMPILED_PATTERNS: LazyLock<Vec<(Regex, StyleHandler)>> = LazyLock::new(|
 
 /// Uses a tailwind-like shorthand to allow for more concise UI definitions
 fn node_style(commands: &mut EntityCommands, sl: &str) {
-    let mut bundle = StyledBundle {
-        node: Node { ..default() },
-        z_index: None,
-        background_color: None,
-        text_font: None,
-        text_color: None,
-    };
+    let mut bundle = StyledBundle::default();
 
     let tokens: Vec<&str> = sl.split_whitespace().collect();
     for token in tokens {
@@ -312,6 +386,35 @@ fn node_style(commands: &mut EntityCommands, sl: &str) {
                         break;
                     };
                     func(&mut bundle, value);
+                }
+                Str(func) => {
+                    if captures.len() != 2 {
+                        log::warn!("No capture group for Str style: {}", token);
+                        break;
+                    }
+                    func(&mut bundle, &captures[1]);
+                }
+                F32F32F32(func) => {
+                    if captures.len() != 4 {
+                        log::warn!(
+                            "Incorrect number of capture groups for F32F32F32 style: {}",
+                            token
+                        );
+                        break;
+                    }
+                    let Ok(v1) = captures[1].parse::<f32>() else {
+                        log::warn!("Invalid first float in style: {}", token);
+                        break;
+                    };
+                    let Ok(v2) = captures[2].parse::<f32>() else {
+                        log::warn!("Invalid second float in style: {}", token);
+                        break;
+                    };
+                    let Ok(v3) = captures[3].parse::<f32>() else {
+                        log::warn!("Invalid third float in style: {}", token);
+                        break;
+                    };
+                    func(&mut bundle, v1, v2, v3);
                 }
                 F32F32F32F32(func) => {
                     if captures.len() != 5 {
@@ -358,5 +461,8 @@ fn node_style(commands: &mut EntityCommands, sl: &str) {
     }
     if let Some(text_color) = bundle.text_color {
         commands.insert(text_color);
+    }
+    if let Some(outline) = bundle.outline {
+        commands.insert(outline);
     }
 }

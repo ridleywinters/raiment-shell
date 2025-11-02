@@ -52,16 +52,16 @@ pub fn startup_console(mut commands: Commands) {
     // Console overlay (initially hidden)
     commands
         .spawn(ConsoleContainer)
-        .styles(vec![
+        .styles(&vec![
             "display-none",
             "width-100% height-50% absolute top0 left0 flex-col p8",
             "z1000",
-            "bg-srgba-(0.0,0.0,0.0,0.925)",
+            "bg-rgba(0.0,0.0,0.0,0.925)",
         ])
         .with_children(|parent| {
             parent
                 .spawn(ConsoleHistoryScroll)
-                .styles(vec![
+                .styles(&vec![
                     "flex-col grow1 scroll-y", //
                     "bg-rgba(0.1,0.1,0.1,0.3)",
                 ])
@@ -69,23 +69,23 @@ pub fn startup_console(mut commands: Commands) {
                     parent // History text
                         .spawn(ConsoleHistoryText)
                         .text("")
-                        .styles(vec![
+                        .styles(&vec![
                             "p8 font-size-16", //
-                            "fg-srgba-(0.8,0.8,0.6,1.0)",
+                            "fg-rgba(0.8,0.8,0.6,1.0)",
                         ]);
                 });
             parent // Input prompt
                 .spawn_empty()
-                .styles(vec!["flex-row-center gap8 mt8"])
+                .styles(&vec!["flex-row-center gap8 mt8"])
                 .with_children(|parent| {
                     parent
                         .spawn_empty()
                         .text("> ")
-                        .styles(vec!["fg-white font-size-16"]);
+                        .styles(&vec!["fg-white font-size-16"]);
                     parent
                         .spawn(ConsoleInputText)
                         .text("")
-                        .styles(vec!["fg-white font-size-16"]);
+                        .styles(&vec!["fg-white font-size-16"]);
                 });
         });
 }
