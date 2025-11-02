@@ -1,16 +1,15 @@
-use crate::console_variables::{CVarValue, ConsoleVariableRegistry};
+use crate::cvars::{CVarRegistry, CVarValue};
 use crate::ui::PlayerStats;
 use bevy::prelude::*;
 
 // Command handler type for modular command system
-type CommandHandler =
-    fn(&[&str], &mut ResMut<PlayerStats>, &mut ResMut<ConsoleVariableRegistry>) -> String;
+type CommandHandler = fn(&[&str], &mut ResMut<PlayerStats>, &mut ResMut<CVarRegistry>) -> String;
 
 /// Handle the setvar command - sets a console variable value
 fn cmd_setvar(
     tokens: &[&str],
     _stats: &mut ResMut<PlayerStats>,
-    cvars: &mut ResMut<ConsoleVariableRegistry>,
+    cvars: &mut ResMut<CVarRegistry>,
 ) -> String {
     if tokens.len() < 3 {
         return "usage: setvar <variable> <value>".to_string();
@@ -34,7 +33,7 @@ fn cmd_setvar(
 fn cmd_getvar(
     tokens: &[&str],
     _stats: &mut ResMut<PlayerStats>,
-    cvars: &mut ResMut<ConsoleVariableRegistry>,
+    cvars: &mut ResMut<CVarRegistry>,
 ) -> String {
     if tokens.len() < 2 {
         return "usage: getvar <variable>".to_string();
@@ -52,7 +51,7 @@ fn cmd_getvar(
 fn cmd_listvars(
     _tokens: &[&str],
     _stats: &mut ResMut<PlayerStats>,
-    cvars: &mut ResMut<ConsoleVariableRegistry>,
+    cvars: &mut ResMut<CVarRegistry>,
 ) -> String {
     let vars = cvars.list();
 
@@ -70,7 +69,7 @@ fn cmd_listvars(
 fn cmd_add_gold(
     tokens: &[&str],
     stats: &mut ResMut<PlayerStats>,
-    _cvars: &mut ResMut<ConsoleVariableRegistry>,
+    _cvars: &mut ResMut<CVarRegistry>,
 ) -> String {
     if tokens.len() < 2 {
         return "usage: add_gold <amount>".to_string();
@@ -87,7 +86,7 @@ fn cmd_add_gold(
 fn cmd_add_stamina(
     tokens: &[&str],
     stats: &mut ResMut<PlayerStats>,
-    _cvars: &mut ResMut<ConsoleVariableRegistry>,
+    _cvars: &mut ResMut<CVarRegistry>,
 ) -> String {
     if tokens.len() < 2 {
         return "usage: add_stamina <amount>".to_string();
@@ -104,7 +103,7 @@ fn cmd_add_stamina(
 fn cmd_quit(
     _tokens: &[&str],
     _stats: &mut ResMut<PlayerStats>,
-    _cvars: &mut ResMut<ConsoleVariableRegistry>,
+    _cvars: &mut ResMut<CVarRegistry>,
 ) -> String {
     println!("Exiting...");
     std::process::exit(0);
@@ -113,7 +112,7 @@ fn cmd_quit(
 pub fn process_script(
     script: &str,
     stats: &mut ResMut<PlayerStats>,
-    cvars: &mut ResMut<ConsoleVariableRegistry>,
+    cvars: &mut ResMut<CVarRegistry>,
 ) -> Vec<String> {
     let mut output = Vec::new();
 

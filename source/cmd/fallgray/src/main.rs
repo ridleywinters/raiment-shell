@@ -1,6 +1,6 @@
 mod collision;
 mod console;
-mod console_variables;
+mod cvars;
 mod script;
 mod texture_loader;
 mod ui;
@@ -9,7 +9,7 @@ mod ui_styles;
 use bevy::prelude::*;
 use collision::{CollisionMap, PLAYER_RADIUS, check_circle_collision};
 use console::*;
-use console_variables::ConsoleVariableRegistry;
+use cvars::CVarRegistry;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -59,13 +59,11 @@ fn default_item_type() -> String {
     "apple".to_string()
 }
 
-#[derive(Resource)]
-#[derive(Default)]
+#[derive(Resource, Default)]
 struct ItemTracker {
     positions: HashSet<(i32, i32)>, // Grid positions where items exist
     world_positions: Vec<(f32, f32, String)>, // Actual world positions and item types for saving
 }
-
 
 impl ItemTracker {
     fn remove_at_position(&mut self, world_x: f32, world_y: f32) {
@@ -102,6 +100,8 @@ fn main() {
         .add_systems(
             Startup,
             (
+                // Set up the console variables first so other systems, which may
+                // initialize in parallel, can access them during startup.
                 startup_console_variables,
                 (
                     startup_system, //
@@ -200,7 +200,7 @@ fn ease_in_out_cubic(t: f32) -> f32 {
 }
 
 fn startup_console_variables(mut commands: Commands) {
-    let cvars = ConsoleVariableRegistry::new();
+    let cvars = CVarRegistry::new();
     commands.insert_resource(cvars);
 }
 
@@ -209,7 +209,7 @@ fn startup_system(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>,
-    mut cvars: ResMut<ConsoleVariableRegistry>,
+    mut cvars: ResMut<CVarRegistry>,
 ) {
     // Initialize CvarRegistry with default weapon animation values
     cvars.init_f32("weapon.swing_duration", 0.4);
@@ -288,10 +288,10 @@ fn startup_system(
     let filename = std::env::var("REPO_ROOT")
         .map(|repo_root| format!("{}/source/assets/base/items/items.yaml", repo_root))
         .unwrap_or_else(|_| "data/item_definitions.yaml".to_string());
-    let item_defs_yaml =
-        std::fs::read_to_string(&filename).unwrap_or_else(|_| panic!("Failed to read {}", filename));
-    let item_defs_file: ItemDefinitionsFile =
-        serde_yaml::from_str(&item_defs_yaml).unwrap_or_else(|_| panic!("Failed to parse {}", filename));
+    let item_defs_yaml = std::fs::read_to_string(&filename)
+        .unwrap_or_else(|_| panic!("Failed to read {}", filename));
+    let item_defs_file: ItemDefinitionsFile = serde_yaml::from_str(&item_defs_yaml)
+        .unwrap_or_else(|_| panic!("Failed to parse {}", filename));
     let item_definitions = ItemDefinitions {
         items: item_defs_file.items,
     };
@@ -380,8 +380,7 @@ fn startup_system(
         let item_def = item_definitions
             .items
             .get(&item_pos.item_type)
-            .unwrap_or_else(|| panic!("Item definition not found: {}",
-                item_pos.item_type));
+            .unwrap_or_else(|| panic!("Item definition not found: {}", item_pos.item_type));
         let scale = item_def.scale;
 
         // Spawn the item billboard
@@ -654,7 +653,6 @@ fn update_camera_control_system(
     }
 }
 
-#[allow(clippy::type_complexity)]
 fn update_player_light(
     player_query: Query<&Transform, With<Player>>,
     mut light_query: Query<(&mut Transform, &PlayerLight), Without<Player>>,
@@ -728,7 +726,7 @@ fn update_weapon_swing(
     mouse_button: Res<ButtonInput<MouseButton>>,
     toolbar: Res<Toolbar>,
     console_state: Res<ConsoleState>,
-    cvars: Res<ConsoleVariableRegistry>,
+    cvars: Res<CVarRegistry>,
     mut weapon_query: Query<(&mut Transform, &mut WeaponSprite, &mut Visibility)>,
     ui_interaction_query: Query<&Interaction>,
 ) {
@@ -901,7 +899,7 @@ fn spawn_weapon_sprite(
     materials: &mut ResMut<Assets<StandardMaterial>>,
     asset_server: &Res<AssetServer>,
     camera_entity: Entity,
-    cvars: &ConsoleVariableRegistry,
+    cvars: &CVarRegistry,
 ) {
     use bevy::asset::RenderAssetUsages;
     use bevy::mesh::{Indices, PrimitiveTopology};
@@ -1210,7 +1208,7 @@ fn update_check_item_collision(
     player_query: Query<&Transform, With<Player>>,
     item_query: Query<(Entity, &Transform, &Item)>,
     mut stats: ResMut<PlayerStats>,
-    mut cvars: ResMut<ConsoleVariableRegistry>,
+    mut cvars: ResMut<CVarRegistry>,
     mut item_tracker: ResMut<ItemTracker>,
     item_definitions: Res<ItemDefinitions>,
 ) {

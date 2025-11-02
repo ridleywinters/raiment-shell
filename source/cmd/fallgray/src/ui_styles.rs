@@ -61,25 +61,25 @@ static COMPILED_PATTERNS: LazyLock<Vec<(Regex, StyleHandler)>> = LazyLock::new(|
             }),
         ),
         (
-            r"top(\d+)",
+            r"top-(\d+)",
             I32(|b, v| {
                 b.node.top = Val::Px(v as f32);
             }),
         ),
         (
-            r"left(\d+)",
+            r"left-(\d+)",
             I32(|b, v| {
                 b.node.left = Val::Px(v as f32);
             }),
         ),
         (
-            r"bottom(\d+)",
+            r"bottom-(\d+)",
             I32(|b, v| {
                 b.node.bottom = Val::Px(v as f32);
             }),
         ),
         (
-            r"right(\d+)",
+            r"right-(\d+)",
             I32(|b, v| {
                 b.node.right = Val::Px(v as f32);
             }),

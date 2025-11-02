@@ -1,3 +1,12 @@
+/// Console Variables (CVars) management
+///
+/// Provides a registry for defining, setting, and getting console variables
+/// of different types (float, int, string).  The purpose of console variables
+/// is to allow for runtime modifications of game settings and parameters
+/// either manually via the console or programmatically via scripts.
+///
+/// The idea is borrowed from old Quake-style console variables.
+///
 use bevy::prelude::*;
 use std::collections::HashMap;
 
@@ -47,11 +56,11 @@ impl std::fmt::Display for CVarValue {
 
 /// Resource that stores all console variables
 #[derive(Resource, Default)]
-pub struct ConsoleVariableRegistry {
+pub struct CVarRegistry {
     vars: HashMap<String, CVarValue>,
 }
 
-impl ConsoleVariableRegistry {
+impl CVarRegistry {
     pub fn new() -> Self {
         Self {
             vars: HashMap::new(),

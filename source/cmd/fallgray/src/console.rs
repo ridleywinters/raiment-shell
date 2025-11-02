@@ -1,4 +1,4 @@
-use crate::console_variables::ConsoleVariableRegistry;
+use crate::cvars::CVarRegistry;
 use crate::script::process_script;
 use crate::ui::PlayerStats;
 use crate::ui_styles::EntityCommandsUIExt;
@@ -54,7 +54,7 @@ pub fn startup_console(mut commands: Commands) {
         .spawn(ConsoleContainer)
         .styles(&vec![
             "display-none",
-            "width-100% height-50% absolute top0 left0 flex-col p8",
+            "width-100% height-50% absolute top-0 left-0 flex-col p8",
             "z1000",
             "bg-rgba(0.0,0.0,0.0,0.925)",
         ])
@@ -118,7 +118,7 @@ pub fn update_console_input(
     input: Res<ButtonInput<KeyCode>>,
     mut console_state: ResMut<ConsoleState>,
     mut stats: ResMut<PlayerStats>,
-    mut cvars: ResMut<ConsoleVariableRegistry>,
+    mut cvars: ResMut<CVarRegistry>,
     mut input_text_query: Query<&mut Text, With<ConsoleInputText>>,
     mut history_text_query: Query<&mut Text, (With<ConsoleHistoryText>, Without<ConsoleInputText>)>,
 ) {
@@ -168,41 +168,42 @@ pub fn update_console_input(
     }
 
     // Handle Up arrow - navigate to previous command in history
-    if input.just_pressed(KeyCode::ArrowUp)
-        && !console_state.command_history.is_empty() {
-            let new_index = match console_state.history_index {
-                None => Some(console_state.command_history.len() - 1),
-                Some(idx) if idx > 0 => Some(idx - 1),
-                Some(idx) => Some(idx),
-            };
+    if input.just_pressed(KeyCode::ArrowUp) && !console_state.command_history.is_empty() {
+        let new_index = match console_state.history_index {
+            None => Some(console_state.command_history.len() - 1),
+            Some(idx) if idx > 0 => Some(idx - 1),
+            Some(idx) => Some(idx),
+        };
 
-            if let Some(idx) = new_index {
-                console_state.history_index = new_index;
-                console_state.input_text = console_state.command_history[idx].clone();
-                console_state.cursor_position = console_state.input_text.chars().count();
-            }
+        if let Some(idx) = new_index {
+            console_state.history_index = new_index;
+            console_state.input_text = console_state.command_history[idx].clone();
+            console_state.cursor_position = console_state.input_text.chars().count();
         }
+    }
 
     // Handle Down arrow - navigate to next command in history
     if input.just_pressed(KeyCode::ArrowDown)
-        && let Some(idx) = console_state.history_index {
-            if idx < console_state.command_history.len() - 1 {
-                console_state.history_index = Some(idx + 1);
-                console_state.input_text = console_state.command_history[idx + 1].clone();
-                console_state.cursor_position = console_state.input_text.chars().count();
-            } else {
-                // At the end of history, clear input
-                console_state.history_index = None;
-                console_state.input_text.clear();
-                console_state.cursor_position = 0;
-            }
+        && let Some(idx) = console_state.history_index
+    {
+        if idx < console_state.command_history.len() - 1 {
+            console_state.history_index = Some(idx + 1);
+            console_state.input_text = console_state.command_history[idx + 1].clone();
+            console_state.cursor_position = console_state.input_text.chars().count();
+        } else {
+            // At the end of history, clear input
+            console_state.history_index = None;
+            console_state.input_text.clear();
+            console_state.cursor_position = 0;
         }
+    }
 
     // Handle Left arrow - move cursor left
     if (input.just_pressed(KeyCode::ArrowLeft) || should_handle_arrow_left)
-        && console_state.cursor_position > 0 {
-            console_state.cursor_position -= 1;
-        }
+        && console_state.cursor_position > 0
+    {
+        console_state.cursor_position -= 1;
+    }
 
     // Handle Right arrow - move cursor right
     if input.just_pressed(KeyCode::ArrowRight) || should_handle_arrow_right {
@@ -293,48 +294,48 @@ pub fn update_console_input(
     }
 
     // Handle Enter key - submit command
-    if input.just_pressed(KeyCode::Enter)
-        && !console_state.input_text.is_empty() {
-            // Echo the command to history
-            let command = console_state.input_text.clone();
-            console_state.log.push(format!(": {}", command));
+    if input.just_pressed(KeyCode::Enter) && !console_state.input_text.is_empty() {
+        // Echo the command to history
+        let command = console_state.input_text.clone();
+        console_state.log.push(format!(": {}", command));
 
-            // Add to command history (for up/down arrow navigation)
-            console_state.command_history.push(command.clone());
-            console_state.history_index = None; // Reset history navigation
+        // Add to command history (for up/down arrow navigation)
+        console_state.command_history.push(command.clone());
+        console_state.history_index = None; // Reset history navigation
 
-            // Process the command and get output
-            let output = process_script(&command, &mut stats, &mut cvars);
-            for line in output {
-                console_state.log.push(format!("  {}", line));
-            }
-
-            let history_len = console_state.log.len();
-            if history_len > MAX_HISTORY_LINES {
-                console_state.log.drain(0..history_len - MAX_HISTORY_LINES);
-            }
-
-            // Update history display
-            if let Ok(mut text) = history_text_query.single_mut() {
-                **text = console_state.log.join("\n");
-            }
-
-            // Clear input and reset cursor
-            console_state.input_text.clear();
-            console_state.cursor_position = 0;
+        // Process the command and get output
+        let output = process_script(&command, &mut stats, &mut cvars);
+        for line in output {
+            console_state.log.push(format!("  {}", line));
         }
+
+        let history_len = console_state.log.len();
+        if history_len > MAX_HISTORY_LINES {
+            console_state.log.drain(0..history_len - MAX_HISTORY_LINES);
+        }
+
+        // Update history display
+        if let Ok(mut text) = history_text_query.single_mut() {
+            **text = console_state.log.join("\n");
+        }
+
+        // Clear input and reset cursor
+        console_state.input_text.clear();
+        console_state.cursor_position = 0;
+    }
 
     // Handle Backspace - delete character before cursor
     if (input.just_pressed(KeyCode::Backspace) || should_handle_backspace)
-        && console_state.cursor_position > 0 {
-            let char_indices: Vec<_> = console_state.input_text.char_indices().collect();
-            if console_state.cursor_position <= char_indices.len() {
-                let byte_pos = char_indices[console_state.cursor_position - 1].0;
-                console_state.input_text.remove(byte_pos);
-                console_state.cursor_position -= 1;
-                console_state.history_index = None;
-            }
+        && console_state.cursor_position > 0
+    {
+        let char_indices: Vec<_> = console_state.input_text.char_indices().collect();
+        if console_state.cursor_position <= char_indices.len() {
+            let byte_pos = char_indices[console_state.cursor_position - 1].0;
+            console_state.input_text.remove(byte_pos);
+            console_state.cursor_position -= 1;
+            console_state.history_index = None;
         }
+    }
 
     // Handle Delete - delete character at cursor
     if input.just_pressed(KeyCode::Delete) || should_handle_delete {
@@ -362,21 +363,22 @@ pub fn update_console_input(
     // Handle character input
     for event in char_events.read() {
         if event.state.is_pressed()
-            && let bevy::input::keyboard::Key::Character(ref s) = event.logical_key {
-                // Ignore backtick to prevent it being added when opening console
-                // Also ignore space since we handle it explicitly above
-                if s.as_str() != "`" && s.as_str() != "~" && s.as_str() != " " {
-                    let char_indices: Vec<_> = console_state.input_text.char_indices().collect();
-                    let byte_pos = if console_state.cursor_position < char_indices.len() {
-                        char_indices[console_state.cursor_position].0
-                    } else {
-                        console_state.input_text.len()
-                    };
-                    console_state.input_text.insert_str(byte_pos, s.as_str());
-                    console_state.cursor_position += s.chars().count();
-                    console_state.history_index = None;
-                }
+            && let bevy::input::keyboard::Key::Character(ref s) = event.logical_key
+        {
+            // Ignore backtick to prevent it being added when opening console
+            // Also ignore space since we handle it explicitly above
+            if s.as_str() != "`" && s.as_str() != "~" && s.as_str() != " " {
+                let char_indices: Vec<_> = console_state.input_text.char_indices().collect();
+                let byte_pos = if console_state.cursor_position < char_indices.len() {
+                    char_indices[console_state.cursor_position].0
+                } else {
+                    console_state.input_text.len()
+                };
+                console_state.input_text.insert_str(byte_pos, s.as_str());
+                console_state.cursor_position += s.chars().count();
+                console_state.history_index = None;
             }
+        }
     }
 
     // Update input text display with cursor
