@@ -1,3 +1,4 @@
+use crate::console::ConsoleState;
 use crate::texture_loader::load_image_texture;
 use bevy::prelude::*;
 
@@ -367,7 +368,13 @@ pub fn update_toolbar_input(
     input: Res<ButtonInput<KeyCode>>,
     mut stats: ResMut<PlayerStats>,
     mut toolbar: ResMut<Toolbar>,
+    console_state: Res<ConsoleState>,
 ) {
+    // Don't process toolbar input if console is open
+    if console_state.visible {
+        return;
+    }
+
     // Toolbar slot selection (1-9, 0 for slot 10)
     if input.just_pressed(KeyCode::Digit1) {
         toolbar.active_slot = 1;

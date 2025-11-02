@@ -1,9 +1,14 @@
 mod collision;
+mod console;
+mod console_variables;
+mod script;
 mod texture_loader;
 mod ui;
 
 use bevy::prelude::*;
 use collision::{CollisionMap, PLAYER_RADIUS, check_circle_collision};
+use console::*;
+use console_variables::ConsoleVariableRegistry;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -103,13 +108,21 @@ fn main() {
         .add_systems(
             Startup,
             (
-                startup_system, //
-                startup_ui,
-            ),
+                startup_console_variables,
+                (
+                    startup_system, //
+                    startup_ui,
+                    startup_console,
+                ),
+            )
+                .chain(),
         )
         .add_systems(
             Update,
             (
+                update_console_toggle,
+                update_console_input,
+                update_console_scroll,
                 update_camera_control_system,
                 update_player_light,
                 update_player_light_animation,
@@ -170,34 +183,6 @@ impl Default for WeaponSprite {
     }
 }
 
-// ===== WEAPON ANIMATION CONSTANTS =====
-
-// Animation timing phases
-const WINDUP_END: f32 = 0.15; // 15% - Wind-up phase
-const SWING_END: f32 = 0.50; // 50% - Thrust/swing phase (35% duration)
-const FOLLOWTHROUGH_END: f32 = 1.0; // 100% - Follow-through phase (50% duration)
-
-// Rest position (idle state)
-const REST_POS_X: f32 = 0.6; // Right side of screen
-const REST_POS_Y: f32 = -0.45; // Lower on screen
-const REST_POS_Z: f32 = -1.2; // Distance from camera
-const REST_ROTATION_Z: f32 = 0.0; // No spin at rest
-const REST_ROTATION_Y: f32 = 0.0; // No tilt at rest
-
-// Wind-up position
-const WINDUP_POS_X: f32 = 0.7; // Slightly more right
-const WINDUP_POS_Y: f32 = -0.35; // Slightly higher
-const WINDUP_POS_Z: f32 = -0.8; // Pull back toward camera
-const WINDUP_ROTATION_Z: f32 = -0.5; // Counter-clockwise wind-up
-const WINDUP_ROTATION_Y: f32 = 0.8; // Tilt right
-
-// Thrust end position
-const THRUST_POS_X: f32 = 0.3; // Move toward center
-const THRUST_POS_Y: f32 = -0.45; // Slightly higher than rest
-const THRUST_POS_Z: f32 = -1.5; // Extend forward
-const THRUST_ROTATION_Z: f32 = 1.55; // Large clockwise spin (~89°)
-const THRUST_ROTATION_Y: f32 = -1.3; // Tilt left (~-74°)
-
 impl Default for LightColorAnimation {
     fn default() -> Self {
         Self {
@@ -220,12 +205,39 @@ fn ease_in_out_cubic(t: f32) -> f32 {
     }
 }
 
+fn startup_console_variables(mut commands: Commands) {
+    let cvars = ConsoleVariableRegistry::new();
+    commands.insert_resource(cvars);
+}
+
 fn startup_system(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>,
+    mut cvars: ResMut<ConsoleVariableRegistry>,
 ) {
+    // Initialize CvarRegistry with default weapon animation values
+    cvars.init_f32("weapon.swing_duration", 0.4);
+    cvars.init_f32("weapon.windup_end", 0.15);
+    cvars.init_f32("weapon.swing_end", 0.80);
+    cvars.init_f32("weapon.followthrough_end", 1.0);
+    cvars.init_f32("weapon.rest_pos_x", 0.9);
+    cvars.init_f32("weapon.rest_pos_y", -0.45);
+    cvars.init_f32("weapon.rest_pos_z", -1.2);
+    cvars.init_f32("weapon.rest_rotation_z", 0.0);
+    cvars.init_f32("weapon.rest_rotation_y", 0.0);
+    cvars.init_f32("weapon.windup_pos_x", 0.7);
+    cvars.init_f32("weapon.windup_pos_y", -0.35);
+    cvars.init_f32("weapon.windup_pos_z", -0.8);
+    cvars.init_f32("weapon.windup_rotation_z", -0.5);
+    cvars.init_f32("weapon.windup_rotation_y", 0.8);
+    cvars.init_f32("weapon.thrust_pos_x", 0.3);
+    cvars.init_f32("weapon.thrust_pos_y", -0.45);
+    cvars.init_f32("weapon.thrust_pos_z", -1.5);
+    cvars.init_f32("weapon.thrust_rotation_z", 1.55);
+    cvars.init_f32("weapon.thrust_rotation_y", 0.1);
+
     // Create a 512x512 plane in the XY plane at z=0
     let plane_mesh = meshes.add(Plane3d::default().mesh().size(512.0, 512.0));
     let plane_material2 = materials.add(StandardMaterial {
@@ -429,6 +441,7 @@ fn startup_system(
         &mut materials,
         &asset_server,
         camera_entity,
+        &cvars,
     );
 
     // Add a point light that follows the player
@@ -501,8 +514,14 @@ fn update_camera_control_system(
     time: Res<Time>,
     input: Res<ButtonInput<KeyCode>>,
     collision_map: Res<CollisionMap>,
+    console_state: Res<ConsoleState>,
     mut query: Query<(&mut Transform, &Player)>,
 ) {
+    // Don't process camera controls if console is open
+    if console_state.visible {
+        return;
+    }
+
     for (mut transform, player) in query.iter_mut() {
         let dt = time.delta_secs();
 
@@ -716,6 +735,8 @@ fn update_weapon_swing(
     time: Res<Time>,
     mouse_button: Res<ButtonInput<MouseButton>>,
     toolbar: Res<Toolbar>,
+    console_state: Res<ConsoleState>,
+    cvars: Res<ConsoleVariableRegistry>,
     mut weapon_query: Query<(&mut Transform, &mut WeaponSprite, &mut Visibility)>,
     ui_interaction_query: Query<&Interaction>,
 ) {
@@ -731,6 +752,7 @@ fn update_weapon_swing(
         if mouse_button.just_pressed(MouseButton::Left)
             && !weapon.is_swinging
             && toolbar.active_slot == 1
+            && !console_state.visible
         {
             // Check if any UI element is being interacted with
             let ui_blocked = ui_interaction_query
@@ -746,47 +768,65 @@ fn update_weapon_swing(
             weapon.swing_timer.tick(time.delta());
             let progress = weapon.swing_timer.fraction();
 
-            let rest_pos = Vec3::new(REST_POS_X, REST_POS_Y, REST_POS_Z);
-            let rest_rotation_z = REST_ROTATION_Z;
-            let rest_rotation_y = REST_ROTATION_Y;
+            // Read animation parameters from cvars
+            let rest_pos = Vec3::new(
+                cvars.get_f32("weapon.rest_pos_x"),
+                cvars.get_f32("weapon.rest_pos_y"),
+                cvars.get_f32("weapon.rest_pos_z"),
+            );
+            let rest_rotation_z = cvars.get_f32("weapon.rest_rotation_z");
+            let rest_rotation_y = cvars.get_f32("weapon.rest_rotation_y");
+
+            let windup_pos = Vec3::new(
+                cvars.get_f32("weapon.windup_pos_x"),
+                cvars.get_f32("weapon.windup_pos_y"),
+                cvars.get_f32("weapon.windup_pos_z"),
+            );
+            let windup_rotation_z = cvars.get_f32("weapon.windup_rotation_z");
+            let windup_rotation_y = cvars.get_f32("weapon.windup_rotation_y");
+
+            let thrust_pos = Vec3::new(
+                cvars.get_f32("weapon.thrust_pos_x"),
+                cvars.get_f32("weapon.thrust_pos_y"),
+                cvars.get_f32("weapon.thrust_pos_z"),
+            );
+            let thrust_rotation_z = cvars.get_f32("weapon.thrust_rotation_z");
+            let thrust_rotation_y = cvars.get_f32("weapon.thrust_rotation_y");
+
+            let windup_end = cvars.get_f32("weapon.windup_end");
+            let swing_end = cvars.get_f32("weapon.swing_end");
 
             // Calculate current position and rotation based on phase
-            let (current_pos, current_rotation_z, current_rotation_y) = if progress < WINDUP_END {
+            let (current_pos, current_rotation_z, current_rotation_y) = if progress < windup_end {
                 // Wind-up phase: pull back toward camera
-                let phase_t = progress / WINDUP_END;
+                let phase_t = progress / windup_end;
                 let eased_t = ease_out_quad(phase_t);
-
-                let windup_pos = Vec3::new(WINDUP_POS_X, WINDUP_POS_Y, WINDUP_POS_Z);
 
                 (
                     rest_pos.lerp(windup_pos, eased_t),
-                    REST_ROTATION_Z + (WINDUP_ROTATION_Z - REST_ROTATION_Z) * eased_t,
-                    REST_ROTATION_Y + (WINDUP_ROTATION_Y - REST_ROTATION_Y) * eased_t,
+                    rest_rotation_z + (windup_rotation_z - rest_rotation_z) * eased_t,
+                    rest_rotation_y + (windup_rotation_y - rest_rotation_y) * eased_t,
                 )
-            } else if progress < SWING_END {
+            } else if progress < swing_end {
                 // Thrust phase: fast FORWARD motion with rotation
-                let phase_t = (progress - WINDUP_END) / (SWING_END - WINDUP_END);
+                let phase_t = (progress - windup_end) / (swing_end - windup_end);
                 let eased_t = ease_in_out_cubic(phase_t);
 
-                let windup_pos = Vec3::new(WINDUP_POS_X, WINDUP_POS_Y, WINDUP_POS_Z);
-                let thrust_end_pos = Vec3::new(THRUST_POS_X, THRUST_POS_Y, THRUST_POS_Z);
-
                 (
-                    windup_pos.lerp(thrust_end_pos, eased_t),
-                    WINDUP_ROTATION_Z + (THRUST_ROTATION_Z - WINDUP_ROTATION_Z) * eased_t,
-                    WINDUP_ROTATION_Y + (THRUST_ROTATION_Y - WINDUP_ROTATION_Y) * eased_t,
+                    windup_pos.lerp(thrust_pos, eased_t),
+                    windup_rotation_z + (thrust_rotation_z - windup_rotation_z) * eased_t,
+                    windup_rotation_y + (thrust_rotation_y - windup_rotation_y) * eased_t,
                 )
             } else {
                 // Follow-through phase: deceleration back to rest
-                let phase_t = (progress - SWING_END) / (FOLLOWTHROUGH_END - SWING_END);
+                let phase_t = (progress - swing_end)
+                    / (cvars.get_f32("weapon.followthrough_end") - swing_end);
                 let eased_t = ease_out_quad(phase_t);
 
-                let thrust_end_pos = Vec3::new(THRUST_POS_X, THRUST_POS_Y, THRUST_POS_Z);
-
                 (
-                    thrust_end_pos.lerp(rest_pos, eased_t),
-                    THRUST_ROTATION_Z + (REST_ROTATION_Z - THRUST_ROTATION_Z) * eased_t,
-                    THRUST_ROTATION_Y + (REST_ROTATION_Y - THRUST_ROTATION_Y) * eased_t,
+                    thrust_pos.lerp(rest_pos, eased_t),
+                    thrust_rotation_z + (rest_rotation_z - thrust_rotation_z) * eased_t,
+                    thrust_rotation_y + (rest_rotation_y - thrust_rotation_y) * eased_t,
                 )
             };
 
@@ -869,6 +909,7 @@ fn spawn_weapon_sprite(
     materials: &mut ResMut<Assets<StandardMaterial>>,
     asset_server: &Res<AssetServer>,
     camera_entity: Entity,
+    cvars: &ConsoleVariableRegistry,
 ) {
     use bevy::asset::RenderAssetUsages;
     use bevy::mesh::{Indices, PrimitiveTopology};
@@ -911,11 +952,17 @@ fn spawn_weapon_sprite(
     // Spawn weapon as child of camera
     // Position it to the right and lower on screen
     // Close to camera to ensure it renders on top
+    let rest_pos = Vec3::new(
+        cvars.get_f32("weapon.rest_pos_x"),
+        cvars.get_f32("weapon.rest_pos_y"),
+        cvars.get_f32("weapon.rest_pos_z"),
+    );
+
     let weapon_entity = commands
         .spawn((
             Mesh3d(meshes.add(weapon_mesh)),
             MeshMaterial3d(sprite_material),
-            Transform::from_xyz(REST_POS_X, REST_POS_Y, REST_POS_Z), // Use constants to match animation rest position
+            Transform::from_translation(rest_pos),
             WeaponSprite::default(),
         ))
         .id();
@@ -996,7 +1043,13 @@ fn update_spawn_item_on_click(
     mut item_tracker: ResMut<ItemTracker>,
     toolbar: Res<Toolbar>,
     item_definitions: Res<ItemDefinitions>,
+    console_state: Res<ConsoleState>,
 ) {
+    // Don't spawn items if console is open
+    if console_state.visible {
+        return;
+    }
+
     if !mouse_button.just_pressed(MouseButton::Left) {
         return;
     }
@@ -1098,7 +1151,16 @@ fn update_spawn_item_on_click(
     );
 }
 
-fn update_save_map_on_input(input: Res<ButtonInput<KeyCode>>, item_tracker: Res<ItemTracker>) {
+fn update_save_map_on_input(
+    input: Res<ButtonInput<KeyCode>>,
+    item_tracker: Res<ItemTracker>,
+    console_state: Res<ConsoleState>,
+) {
+    // Don't save map if console is open
+    if console_state.visible {
+        return;
+    }
+
     // Press Ctrl+S to save the map
     if (input.pressed(KeyCode::ControlLeft) || input.pressed(KeyCode::ControlRight))
         && input.just_pressed(KeyCode::KeyS)
@@ -1156,6 +1218,7 @@ fn update_check_item_collision(
     player_query: Query<&Transform, With<Player>>,
     item_query: Query<(Entity, &Transform, &Item)>,
     mut stats: ResMut<PlayerStats>,
+    mut cvars: ResMut<ConsoleVariableRegistry>,
     mut item_tracker: ResMut<ItemTracker>,
     item_definitions: Res<ItemDefinitions>,
 ) {
@@ -1177,10 +1240,13 @@ fn update_check_item_collision(
                 .map(|(_, _, item_type)| item_type.as_str())
                 .unwrap_or("apple");
 
-            // Get the item definition and print the script
+            // Get the item definition and process the script
             if let Some(item_def) = item_definitions.items.get(item_type) {
                 println!("Item script: {}", item_def.script);
-                process_script(&item_def.script, &mut stats);
+                let output = script::process_script(&item_def.script, &mut stats, &mut cvars);
+                for line in &output {
+                    println!("{}", line);
+                }
             }
 
             // Remove item from world
@@ -1190,54 +1256,6 @@ fn update_check_item_collision(
             item_tracker.remove_at_position(item_pos.x, item_pos.y);
 
             println!("Collected item! Fatigue: {}", stats.stamina);
-        }
-    }
-}
-
-fn process_script(script: &str, stats: &mut ResMut<PlayerStats>) {
-    for line in script.lines() {
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-        // Skip comment lines
-        if trimmed.starts_with('#') || trimmed.starts_with("//") {
-            continue;
-        }
-
-        let words: Vec<&str> = trimmed.split_whitespace().collect();
-        if words.is_empty() {
-            continue;
-        }
-
-        match words[0] {
-            "add_gold" => {
-                if words.len() >= 2 {
-                    if let Ok(amount) = words[1].parse::<i32>() {
-                        stats.gold += amount;
-                        println!("Added {} gold, new value: {}", amount, stats.gold);
-                    } else {
-                        eprintln!("Invalid gold amount: {}", words[1]);
-                    }
-                } else {
-                    eprintln!("add_gold requires an amount");
-                }
-            }
-            "add_stamina" => {
-                if words.len() >= 2 {
-                    if let Ok(amount) = words[1].parse::<f32>() {
-                        stats.stamina = (stats.stamina + amount).min(100.0);
-                        println!("Added {} stamina, new value: {}", amount, stats.stamina);
-                    } else {
-                        eprintln!("Invalid stamina amount: {}", words[1]);
-                    }
-                } else {
-                    eprintln!("add_stamina requires an amount");
-                }
-            }
-            _ => {
-                eprintln!("Unknown command: {}", words.join(" "));
-            }
         }
     }
 }
