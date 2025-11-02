@@ -26,7 +26,7 @@ build: ensure build-only
 [private]
 build-only:
     mkdir -p dist
-    cp -f src/dist/* dist/
+    cp -f src/public/* dist/
     deno bundle \
       --unstable-raw-imports \
       --platform=browser \
@@ -41,7 +41,7 @@ build-only:
 
 dev: ensure
     mprocs \
-        --proc-list-title "palette-editor 9000" \
+        --proc-list-title "palette-editor 7050" \
         --names "client,server" \
         "just dev-client" \
         "just dev-server"

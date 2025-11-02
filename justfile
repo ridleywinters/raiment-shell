@@ -63,6 +63,9 @@ clean:
 clean-bin:
     cd bin && git clean -fdx
 
+[private]
+clean-temp:
+    cd temp && git clean -fdx
 
 #==============================================================================
 # Internal utilities

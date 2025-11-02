@@ -4,7 +4,7 @@
 
 The purpose of this prototype was to see how difficult it was to create PNG files directly from a React-based JSX defintiion.
 
-**Conclusion: the satori library makes it not difficult at all.**
+**Conclusion: the satori library makes it easy.**
 
 ## Motivation
 

@@ -1,13 +1,20 @@
 {
-    // This seems like a better default
+    // Subjectively, this gives the "expected" result more often when duplicating
+    // a file or folder.
     "explorer.incrementalNaming": "smart",
+
     "editor.codeActionsOnSave": {
-        "source.organizeImports": "always"
+        // While this feature is nice in theory, it has a tendency to
+        // rename aliased import paths that defeats the intent of having
+        // introduced the alias in the first place.
+        "source.organizeImports": "never"
     },
+
+    // Subjective: while cool looking, I've never found the minimap useful
+    "editor.minimap.enabled": false,
 
     // In general, disable inlay hints unless the user explicitly requests them
     "editor.inlayHints.enabled": "offUnlessPressed",
-    "editor.minimap.enabled": false,
 
     // Subjective: the underline highlight on mutable variables is very distracting
     // and rarely provide useful information.

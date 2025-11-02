@@ -1,10 +1,13 @@
+# Design
+
 Miscellaneous design notes:
 
-- The player character does not have magic or know spells
 - The player character is common adventurer, not a "chosen one"
 - There aren't classes: only Skills
 - The player can choose initial Skills and skill levels
 - The player can choose initial Conditions. Example: adding/removing Hunger would mean they do / do not need to regularly eat to control their fatigure level
+- The player character does not have magic or know spells, at least not in the traditional D&D RPG sense
+- There may be some mechanism for manipulating the Maelstrom which may act somewhat like a magic mechanism, but that is TBD
 - Potions should eventually be very rare
 - Physicians, herbalists, rest, and food should be the primary ways to regenerate helath
 - Oils for weapons (ala Witcher 3) should exist

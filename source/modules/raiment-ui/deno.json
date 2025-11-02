@@ -1,7 +1,8 @@
 {
     "imports": {
         "@/": "./src/",
-        "react": "npm:react@^19.2.0"
+        "react": "npm:react@^19.2.0",
+        "@raiment-core": "../raiment-core/mod.ts"
     },
 
     "compilerOptions": {
@@ -11,6 +12,12 @@
             "deno.window",
             "dom",
             "esnext"
+        ],
+        "jsx": "react-jsx",
+        "jsxImportSource": "react",
+        "types": [
+            "npm:@types/react@19",
+            "npm:@types/react-dom@19"
         ]
     },
     "fmt": {
