@@ -4,6 +4,7 @@ mod console_variables;
 mod script;
 mod texture_loader;
 mod ui;
+mod ui_styles;
 
 use bevy::prelude::*;
 use collision::{CollisionMap, PLAYER_RADIUS, check_circle_collision};
