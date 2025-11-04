@@ -32,6 +32,14 @@ export async function serverStart(options: ServerOptions) {
         Deno.exit(1);
     }
 
+    const REPO_ROOT = Deno.env.get("REPO_ROOT");
+    if (!REPO_ROOT) {
+        cprintln(
+            "[error](error): REPO_ROOT environment variable is not set. Please set it to the root of the repository.",
+        );
+        Deno.exit(1);
+    }
+
     const clients = new SSEClientSet();
 
     runFilePollingLoop("./dist/build.timestamp", ({ filename, current, previous }) => {
@@ -45,11 +53,13 @@ export async function serverStart(options: ServerOptions) {
         clients.broadcast({ type: "app.reload" });
     });
 
+    const assetsDir = `${REPO_ROOT}/source/assets`;
     const handlers: [HandlerPattern, (request: Request) => Promise<Response>][] = [
         ["/status", handleStatus],
         ["/api/events", () => handleServerSideEvents(clients)],
         ["/api/read-file", (req) => handleAPIReadFile(req, { baseDir: "./data" })],
         ["/api/write-file", (req) => handleAPIWriteFile(req, { baseDir: "./data" })],
+        [/\/assets\/.*/, (req) => handleStaticFiles(assetsDir, req, { stripPrefix: "assets/" })],
         [/.*/, (req) => handleStaticFiles("./dist", req, { defaultFile: "index.html" })],
     ];
 

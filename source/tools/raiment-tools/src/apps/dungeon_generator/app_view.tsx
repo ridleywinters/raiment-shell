@@ -1,5 +1,6 @@
-import { RNG } from "@raiment-core";
 import React, { JSX } from "react";
+import { RNG } from "@raiment-core";
+import { Div } from "@raiment-ui";
 
 type Direction = "Y+" | "Y-" | "X+" | "X-";
 
@@ -250,7 +251,7 @@ async function generateCellsFromPNG(database: Database): Promise<void> {
     console.log("Generating cells from PNG...");
 
     // Load the PNG image and extract the cell data
-    const image = await loadImage("/tiles-map-16x16.png");
+    const image = await loadImage("/assets/base/sprites/tiles-map-16x16.png");
     const cells = await extractCellData(image);
 
     // Create cells from the extracted data
@@ -559,13 +560,13 @@ export function AppView(): JSX.Element {
     return (
         <div style={{ margin: 16 }}>
             {data.map((row, i) => (
-                <div key={i} style={{ display: "flex", flexDirection: "row" }}>
+                <Div key={i} sl="flex-row">
                     {row.map((cell, j) => (
-                        <div key={j}>
+                        <Div key={j}>
                             <CellView cell={cell} />
-                        </div>
+                        </Div>
                     ))}
-                </div>
+                </Div>
             ))}
         </div>
     );
@@ -579,19 +580,18 @@ function CellView({ cell }: { cell: Cell | undefined }): JSX.Element {
     return (
         <div>
             {data.map((row, rowIndex) => (
-                <div key={rowIndex} style={{ display: "flex", flexDirection: "row" }}>
+                <Div key={rowIndex} sl="flex-row">
                     {row.map((value, colIndex) => (
-                        <div
+                        <Div
                             key={colIndex}
+                            sl="width-6 height-6"
                             style={{
-                                width: 6,
-                                height: 6,
                                 backgroundColor: value ? "#000" : bg,
                                 border: "1px solid #555",
                             }}
                         />
                     ))}
-                </div>
+                </Div>
             ))}
         </div>
     );

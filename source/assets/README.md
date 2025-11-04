@@ -2,6 +2,10 @@
 
 Builds the normalized assets for use by the game engine.
 
+## TODO
+
+- [ ] Having the generated assets and build files at the same dir level is confusing
+
 ## Design
 
 #### Uses a "pull" based design

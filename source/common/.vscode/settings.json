@@ -55,7 +55,9 @@
 
     // Formatter configuration
     "[markdown]": {
-        "editor.defaultFormatter": "esbenp.prettier-vscode"
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.wordWrap": "wordWrapColumn",
+        "editor.wordWrapColumn": 80
     },
     "[typescript]": {
         "editor.defaultFormatter": "denoland.vscode-deno"

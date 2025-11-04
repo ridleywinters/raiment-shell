@@ -1,10 +1,12 @@
 import React from "react";
 import type { JSX } from "react";
 import { PaletteEditorApp } from "@/apps/palette_editor/palette_editor_app.tsx";
+import { DungeonGeneratorApp } from "@/apps/dungeon_generator/index.tsx";
 import { Div } from "@raiment-ui";
 
 const routes2: [string, string, () => JSX.Element][] = [
     ["Palette Editor", "palette-editor", () => <PaletteEditorApp />],
+    ["Dungeon Generator", "dungeon-generator", () => <DungeonGeneratorApp />],
 ];
 
 export function AppView(): JSX.Element {
@@ -25,12 +27,12 @@ export function AppView(): JSX.Element {
 function HomeView(): JSX.Element {
     return (
         <Div sl="m32">
-            <Div>
+            <Div sl="bold mb16">
                 Raiment Tools
             </Div>
             <Div sl="flex-col">
                 {routes2.map(([name, path]) => (
-                    <Div key={path} sl="flex-row-center my4">
+                    <Div key={path} sl="flex-row-center">
                         <Div sl="mr8">
                             <Div
                                 style={{

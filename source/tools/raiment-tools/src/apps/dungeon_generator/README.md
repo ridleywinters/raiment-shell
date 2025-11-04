@@ -1,6 +1,6 @@
 # dungeon generator
 
-Prototype for dungeon generation.
+Tool for dungeon generation.
 
 ![alt text](screenshot-2025-11-01-101712.png)
 
