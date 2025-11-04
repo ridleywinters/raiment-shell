@@ -250,6 +250,10 @@ const RULES_TABLE_SOURCE: StyleLanguageRule[] = [
         () => "display: flex; flex-direction: column;",
     ],
     [
+        "flex-wrap",
+        () => "flex-wrap: wrap;",
+    ],
+    [
         /flex-([0-9A-Za-z%]+)-([0-9A-Za-z%]+)-([0-9A-Za-z%]+)/,
         (m) => `flex: ${m[1]} ${m[2]} ${m[3]};`,
     ],
@@ -362,6 +366,10 @@ const RULES_TABLE_SOURCE: StyleLanguageRule[] = [
         /line-height-([0-9\.]+)/,
         (m) => `line-height: ${m[1]};`,
     ],
+    [
+        /text-(left|center|right|justify)/,
+        (m) => `text-align: ${m[1]};`,
+    ],
 
     //-------------------------------------------------------------------------
     // Cursor
@@ -383,6 +391,14 @@ const RULES_TABLE_SOURCE: StyleLanguageRule[] = [
     [
         /fg-gray-([0-9]+)%?/,
         (m) => `color: hsl(0, 0%, ${m[1]}%);`,
+    ],
+    [
+        /fg-#([0-9A-Za-z]+)/,
+        (m) => `color: #${m[1]};`,
+    ],
+    [
+        /fg-hover-#([0-9A-Za-z]+)/,
+        (m) => `&:hover { color: #${m[1]}; }`,
     ],
     [
         /bg-(white|black|red|green|blue)/,

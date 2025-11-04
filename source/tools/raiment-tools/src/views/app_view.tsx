@@ -1,10 +1,11 @@
 import React from "react";
 import type { JSX } from "react";
-import { PaletteEditorApp } from "@/apps/palette_editor/palette_editor_app.tsx";
-import { DungeonGeneratorApp } from "@/apps/dungeon_generator/index.tsx";
 import { Div } from "@raiment-ui";
 import { useHistoryNavigation } from "@/hooks/use_history_navigation.ts";
 import { ToolAppFrame } from "@/components/tool_app_frame.tsx";
+import { PaletteEditorApp } from "@/apps/palette_editor/palette_editor_app.tsx";
+import { DungeonGeneratorApp } from "@/apps/dungeon_generator/index.tsx";
+import { AssetBrowserApp } from "@/apps/asset_browser/asset_browser_app.tsx";
 
 const routes2: [string, string, () => JSX.Element, string[]][] = [
     ["Palette Editor", "palette-editor", () => <PaletteEditorApp />, [
@@ -12,6 +13,9 @@ const routes2: [string, string, () => JSX.Element, string[]][] = [
     ]],
     ["Dungeon Generator", "dungeon-generator", () => <DungeonGeneratorApp />, [
         "work-in-progress procedural dungeon generator",
+    ]],
+    ["Asset Browser", "asset-browser", () => <AssetBrowserApp />, [
+        "preview all the project assets",
     ]],
 ];
 

@@ -5,6 +5,7 @@ import { handleServerSideEvents, SSEClientSet } from "./handle_server_side_event
 import { handleStaticFiles } from "./handle_static_files.ts";
 import { handleStatus } from "./handle_status.ts";
 import { runFilePollingLoop } from "./run_file_polling_loop.ts";
+import { handleAPIListFiles } from "./handle_api_list_files.ts";
 
 export type ServerOptions = {
     title: string;
@@ -59,6 +60,11 @@ export async function serverStart(options: ServerOptions) {
         ["/api/events", () => handleServerSideEvents(clients)],
         ["/api/read-file", (req) => handleAPIReadFile(req, { baseDir: "./data" })],
         ["/api/write-file", (req) => handleAPIWriteFile(req, { baseDir: "./data" })],
+        // TODO: add a simple redirect that checks if the request path starts with /data or /assets
+        [
+            "/api/list-files",
+            (req) => handleAPIListFiles(req, { baseDir: assetsDir, stripPrefix: "assets/" }),
+        ],
         [/\/assets\/.*/, (req) => handleStaticFiles(assetsDir, req, { stripPrefix: "assets/" })],
         [/.*/, (req) => handleStaticFiles("./dist", req, { defaultFile: "index.html" })],
     ];

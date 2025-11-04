@@ -13,7 +13,6 @@
 
 ## Formatting
 
-- Use consistent indentation
 - Always include curly braces for control flow statements (if, for, while, etc.)
 
 ## Imports

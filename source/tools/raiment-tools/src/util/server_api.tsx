@@ -1,4 +1,23 @@
 class ServerAPI {
+    async listFiles(directory: string, options: {
+        recursive?: boolean;
+    } = { recursive: false }): Promise<string[]> {
+        const resp = await fetch("/api/list-files", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                path: directory,
+                recursive: options.recursive,
+            }),
+        });
+        if (!resp.ok) {
+            throw new Error(`Failed to list files: ${resp.statusText}`);
+        }
+        return await resp.json();
+    }
+
     async readFile(path: string, format: "text" | "yaml" | "json"): Promise<string | object> {
         const resp = await fetch("/api/read-file", {
             method: "POST",
