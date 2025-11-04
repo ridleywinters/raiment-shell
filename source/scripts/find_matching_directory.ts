@@ -123,6 +123,8 @@ function findClosestMatch(
             comparisonString.endsWith(queryLower)
         ) {
             score -= 2;
+        } else if (comparisonString[0] === queryLower[0]) {
+            score -= 1;
         }
 
         // Bonus for prefix match at word boundaries

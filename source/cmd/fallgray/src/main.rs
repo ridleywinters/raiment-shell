@@ -1,6 +1,7 @@
 mod collision;
 mod console;
 mod cvars;
+mod item;
 mod script;
 mod texture_loader;
 mod ui;
@@ -10,30 +11,13 @@ use bevy::prelude::*;
 use collision::{CollisionMap, PLAYER_RADIUS, check_circle_collision};
 use console::*;
 use cvars::CVarRegistry;
+use item::*;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::f32::consts::FRAC_PI_2;
 use texture_loader::{load_image_texture, load_weapon_texture};
 use ui::*;
-
-#[derive(Serialize, Deserialize)]
-pub struct ItemDefinition {
-    pub image: String,
-    pub script: String,
-    pub scale: f32,
-    pub effects: Vec<String>,
-}
-
-#[derive(Deserialize)]
-struct ItemDefinitionsFile {
-    items: HashMap<String, ItemDefinition>,
-}
-
-#[derive(Resource)]
-struct ItemDefinitions {
-    items: HashMap<String, ItemDefinition>,
-}
 
 #[derive(Deserialize, Serialize)]
 struct MapFile {
@@ -45,34 +29,6 @@ struct MapData {
     grid: Vec<String>,
     #[serde(default)]
     items: Vec<ItemPosition>,
-}
-
-#[derive(Deserialize, Serialize, Clone, Debug)]
-struct ItemPosition {
-    x: f32,
-    y: f32,
-    #[serde(default = "default_item_type")]
-    item_type: String,
-}
-
-fn default_item_type() -> String {
-    "apple".to_string()
-}
-
-#[derive(Resource, Default)]
-struct ItemTracker {
-    positions: HashSet<(i32, i32)>, // Grid positions where items exist
-    world_positions: Vec<(f32, f32, String)>, // Actual world positions and item types for saving
-}
-
-impl ItemTracker {
-    fn remove_at_position(&mut self, world_x: f32, world_y: f32) {
-        let grid_x = (world_x / 8.0).floor() as i32;
-        let grid_y = (world_y / 8.0).floor() as i32;
-        self.positions.remove(&(grid_x, grid_y));
-        self.world_positions
-            .retain(|(x, y, _)| (*x - world_x).abs() > 0.1 || (*y - world_y).abs() > 0.1);
-    }
 }
 
 fn main() {
@@ -106,17 +62,14 @@ fn main() {
                 (
                     startup_system, //
                     startup_ui,
-                    startup_console,
                 ),
             )
                 .chain(),
         )
+        .add_plugins(ConsolePlugin {})
         .add_systems(
             Update,
             (
-                update_console_toggle,
-                update_console_input,
-                update_console_scroll,
                 update_camera_control_system,
                 update_player_light,
                 update_player_light_animation,
@@ -146,11 +99,6 @@ struct PlayerLight {
 
 #[derive(Component)]
 struct Billboard;
-
-#[derive(Component)]
-struct Item {
-    interaction_radius: f32,
-}
 
 #[derive(Component)]
 struct GroundPlane;

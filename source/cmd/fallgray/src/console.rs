@@ -4,6 +4,31 @@ use crate::ui::PlayerStats;
 use crate::ui_styles::EntityCommandsUIExt;
 use bevy::prelude::*;
 
+//=============================================================================
+// Console Plugin
+//=============================================================================
+
+pub struct ConsolePlugin;
+
+impl Plugin for ConsolePlugin {
+    fn build(&self, app: &mut App) {
+        app //
+            .add_systems(Startup, startup_console)
+            .add_systems(
+                Update,
+                (
+                    update_console_toggle,
+                    update_console_input,
+                    update_console_scroll,
+                ),
+            );
+    }
+}
+
+//=============================================================================
+// Console State
+//=============================================================================
+
 #[derive(Resource)]
 pub struct ConsoleState {
     pub visible: bool,
@@ -45,7 +70,7 @@ pub struct ConsoleHistoryScroll;
 #[derive(Component)]
 pub struct ConsoleInputText;
 
-pub fn startup_console(mut commands: Commands) {
+fn startup_console(mut commands: Commands) {
     // Initialize console state
     commands.insert_resource(ConsoleState::default());
 
@@ -90,7 +115,7 @@ pub fn startup_console(mut commands: Commands) {
         });
 }
 
-pub fn update_console_toggle(
+fn update_console_toggle(
     input: Res<ButtonInput<KeyCode>>,
     mut console_state: ResMut<ConsoleState>,
     mut console_query: Query<&mut Node, With<ConsoleContainer>>,
@@ -106,13 +131,15 @@ pub fn update_console_toggle(
             } else {
                 Display::None
             };
+        } else {
+            error!("Console container not found");
         }
     }
 }
 
 const MAX_HISTORY_LINES: usize = 200;
 
-pub fn update_console_input(
+fn update_console_input(
     time: Res<Time>,
     mut char_events: MessageReader<bevy::input::keyboard::KeyboardInput>,
     input: Res<ButtonInput<KeyCode>>,
@@ -402,7 +429,7 @@ pub fn update_console_input(
     }
 }
 
-pub fn update_console_scroll(
+fn update_console_scroll(
     console_state: Res<ConsoleState>,
     mut scroll_query: Query<&mut ScrollPosition, With<ConsoleHistoryScroll>>,
 ) {
