@@ -4,6 +4,7 @@ mod cvars;
 mod item;
 mod script;
 mod texture_loader;
+mod toolbar;
 mod ui;
 mod ui_styles;
 
@@ -17,6 +18,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::f32::consts::FRAC_PI_2;
 use texture_loader::{load_image_texture, load_weapon_texture};
+use toolbar::Toolbar;
 use ui::*;
 
 #[derive(Deserialize, Serialize)]
@@ -67,6 +69,7 @@ fn main() {
                 .chain(),
         )
         .add_plugins(ConsolePlugin {})
+        .add_plugins(toolbar::ToolbarPlugin)
         .add_systems(
             Update,
             (
@@ -75,8 +78,6 @@ fn main() {
                 update_player_light_animation,
                 update_weapon_swing,
                 update_ui,
-                update_toolbar_input,
-                update_toolbar_click,
                 update_billboards,
                 update_spawn_item_on_click,
                 update_save_map_on_input,
