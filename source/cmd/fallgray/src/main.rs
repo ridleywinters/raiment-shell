@@ -1,6 +1,6 @@
+mod camera;
 mod collision;
 mod console;
-mod cvars;
 mod item;
 mod scripting;
 mod texture_loader;
@@ -9,11 +9,11 @@ mod ui;
 mod ui_styles;
 
 use bevy::prelude::*;
-use collision::{CollisionMap, PLAYER_RADIUS, check_circle_collision};
+use camera::{CameraPlugin, Player, spawn_camera, spawn_player_lights};
+use collision::{CollisionMap, check_circle_collision};
 use console::*;
-use cvars::CVarRegistry;
 use item::*;
-use rand::Rng;
+use scripting::{CVarRegistry, ScriptingPlugin};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::f32::consts::FRAC_PI_2;
@@ -55,27 +55,20 @@ fn main() {
                     ..default()
                 }),
         )
-        .add_systems(
-            Startup,
-            (
-                // Set up the console variables first so other systems, which may
-                // initialize in parallel, can access them during startup.
-                startup_console_variables,
-                (
-                    startup_system, //
-                    startup_ui,
-                ),
-            )
-                .chain(),
-        )
+        .add_plugins(ScriptingPlugin)
+        .add_plugins(CameraPlugin)
         .add_plugins(ConsolePlugin {})
         .add_plugins(toolbar::ToolbarPlugin)
         .add_systems(
+            Startup,
+            (
+                startup_system, //
+                startup_ui,
+            ),
+        )
+        .add_systems(
             Update,
             (
-                update_camera_control_system,
-                update_player_light,
-                update_player_light_animation,
                 update_weapon_swing,
                 update_ui,
                 update_billboards,
@@ -88,27 +81,10 @@ fn main() {
 }
 
 #[derive(Component)]
-struct Player {
-    speed: f32,
-    rot_speed: f32,
-}
-
-#[derive(Component)]
-struct PlayerLight {
-    offset: Vec3,
-}
-
-#[derive(Component)]
 struct Billboard;
 
 #[derive(Component)]
 struct GroundPlane;
-
-#[derive(Component)]
-struct LightColorAnimation {
-    time: f32,
-    speed: f32,
-}
 
 // Weapon swing components
 #[derive(Component)]
@@ -126,15 +102,6 @@ impl Default for WeaponSprite {
     }
 }
 
-impl Default for LightColorAnimation {
-    fn default() -> Self {
-        Self {
-            time: 0.0,
-            speed: 1.0,
-        }
-    }
-}
-
 // Easing functions for weapon swing
 fn ease_out_quad(t: f32) -> f32 {
     1.0 - (1.0 - t) * (1.0 - t)
@@ -148,19 +115,12 @@ fn ease_in_out_cubic(t: f32) -> f32 {
     }
 }
 
-fn startup_console_variables(mut commands: Commands) {
-    let cvars = CVarRegistry::new();
-    commands.insert_resource(cvars);
-}
-
-fn startup_system(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    asset_server: Res<AssetServer>,
-    mut cvars: ResMut<CVarRegistry>,
-) {
-    // Initialize CvarRegistry with default weapon animation values
+/// Initialize console variables used by the weapon system
+///
+/// This is done to allow the weapon animation parameters to be
+/// at runtime for immediate testing.  
+fn initialize_weapon_cvars(cvars: &mut CVarRegistry) {
+    // Weapon animation cvars
     cvars.init_f32("weapon.swing_duration", 0.4);
     cvars.init_f32("weapon.windup_end", 0.15);
     cvars.init_f32("weapon.swing_end", 0.80);
@@ -180,7 +140,15 @@ fn startup_system(
     cvars.init_f32("weapon.thrust_pos_z", -1.5);
     cvars.init_f32("weapon.thrust_rotation_z", 1.55);
     cvars.init_f32("weapon.thrust_rotation_y", 0.1);
+}
 
+fn startup_system(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
+    mut cvars: ResMut<CVarRegistry>,
+) {
     // Create a 512x512 plane in the XY plane at z=0
     let plane_mesh = meshes.add(Plane3d::default().mesh().size(512.0, 512.0));
     let plane_material2 = materials.add(StandardMaterial {
@@ -211,22 +179,6 @@ fn startup_system(
         Transform::from_rotation(Quat::from_rotation_x(3.0 * FRAC_PI_2))
             .with_translation(Vec3::new(256.0, 256.0, 16.0)),
     ));
-
-    // Add some 8x8x8 cubes as reference points
-    // Translate the mesh by +4.0 in Z so cubes sit on the ground plane
-    let cube_mesh = meshes.add(
-        Cuboid::new(8.0, 8.0, 8.0)
-            .mesh()
-            .build()
-            .translated_by(Vec3::new(4.0, 4.0, 4.0)),
-    );
-
-    let cube_mesh2 = meshes.add(
-        Cuboid::new(8.0, 8.0, 16.0)
-            .mesh()
-            .build()
-            .translated_by(Vec3::new(4.0, 4.0, 8.0)),
-    );
 
     // Load map from data/map.yaml
     let map_yaml = std::fs::read_to_string("data/map.yaml").expect("Failed to read data/map.yaml");
@@ -263,6 +215,22 @@ fn startup_system(
         uv_transform: bevy::math::Affine2::from_scale(Vec2::new(1.0, 1.0)),
         ..default()
     });
+
+    // Add some 8x8x8 cubes that will be used as the walls in the map
+    // Translate the mesh by +4.0 in Z so cubes sit on the ground plane
+    let cube_mesh = meshes.add(
+        Cuboid::new(8.0, 8.0, 8.0)
+            .mesh()
+            .build()
+            .translated_by(Vec3::new(4.0, 4.0, 4.0)),
+    );
+
+    let cube_mesh2 = meshes.add(
+        Cuboid::new(8.0, 8.0, 16.0)
+            .mesh()
+            .build()
+            .translated_by(Vec3::new(4.0, 4.0, 8.0)),
+    );
 
     // Parse the map and create cubes for each 'X'
     for (row, line) in lines.iter().enumerate() {
@@ -355,24 +323,11 @@ fn startup_system(
 
     let player_start_pos = Vec3::new(256.0 + 4.0, 200.0 + 4.0, 4.8);
 
-    let camera_entity = commands
-        .spawn((
-            Camera3d::default(),
-            Transform::from_xyz(player_start_pos.x, player_start_pos.y, player_start_pos.z)
-                .looking_at(
-                    Vec3::new(
-                        player_start_pos.x - 1.0,
-                        player_start_pos.y,
-                        player_start_pos.z * 1.01,
-                    ),
-                    Vec3::Z,
-                ),
-            Player {
-                speed: 32.0,
-                rot_speed: 2.75,
-            },
-        ))
-        .id();
+    // Spawn camera and player lights
+    let camera_entity = spawn_camera(&mut commands, player_start_pos);
+    spawn_player_lights(&mut commands, player_start_pos);
+
+    initialize_weapon_cvars(&mut cvars);
 
     // Spawn weapon sprite as child of camera for first-person view
     spawn_weapon_sprite(
@@ -383,45 +338,6 @@ fn startup_system(
         camera_entity,
         &cvars,
     );
-
-    // Add a point light that follows the player
-    commands.spawn((
-        PointLight {
-            color: Color::WHITE,
-            intensity: 1000000.0,
-            range: 64.0,
-            shadows_enabled: true,
-            ..default()
-        },
-        Transform::from_xyz(
-            player_start_pos.x + 0.0,
-            player_start_pos.y + 1.5,
-            player_start_pos.z + 4.0,
-        ),
-        PlayerLight {
-            offset: Vec3::new(0.0, 1.5, 4.0),
-        },
-        LightColorAnimation::default(),
-    ));
-
-    // Add a second point light that follows the player with no Y offset
-    commands.spawn((
-        PointLight {
-            color: Color::WHITE,
-            intensity: 1000000.0,
-            range: 64.0,
-            shadows_enabled: true,
-            ..default()
-        },
-        Transform::from_xyz(
-            player_start_pos.x + 0.5,
-            player_start_pos.y - 0.5,
-            player_start_pos.z + 4.0,
-        ),
-        PlayerLight {
-            offset: Vec3::new(0.5, -0.5, 4.0),
-        },
-    ));
 }
 
 fn update_billboards(
@@ -446,226 +362,6 @@ fn update_billboards(
 
             // Rotate around Z axis so the plane normal points toward camera
             billboard_transform.rotation = Quat::from_rotation_z(angle);
-        }
-    }
-}
-
-fn update_camera_control_system(
-    time: Res<Time>,
-    input: Res<ButtonInput<KeyCode>>,
-    collision_map: Res<CollisionMap>,
-    console_state: Res<ConsoleState>,
-    mut query: Query<(&mut Transform, &Player)>,
-) {
-    // Don't process camera controls if console is open
-    if console_state.visible {
-        return;
-    }
-
-    for (mut transform, player) in query.iter_mut() {
-        let dt = time.delta_secs();
-
-        // Check if modifier keys are pressed
-        let ctrl_pressed =
-            input.pressed(KeyCode::ControlLeft) || input.pressed(KeyCode::ControlRight);
-
-        // Movement input (WASD + RF)
-        // WASD moves in the XY plane, RF moves along Z axis
-        let mut movement_xy = Vec2::ZERO; // Movement in XY plane
-        let mut movement_z = 0.0; // Movement along Z axis
-
-        if !ctrl_pressed {
-            if input.pressed(KeyCode::KeyW) {
-                movement_xy.y += 1.0;
-            }
-            if input.pressed(KeyCode::KeyS) {
-                movement_xy.y -= 1.0;
-            }
-            if input.pressed(KeyCode::KeyA) {
-                movement_xy.x -= 1.0;
-            }
-            if input.pressed(KeyCode::KeyD) {
-                movement_xy.x += 1.0;
-            }
-            if input.pressed(KeyCode::KeyF) {
-                movement_z -= 1.0;
-            }
-            if input.pressed(KeyCode::KeyR) {
-                movement_z += 1.0;
-            }
-        }
-
-        // Rotation input (Arrow keys)
-        // Arrow left/right rotates around Z axis (yaw)
-        // Arrow up/down changes pitch (looking up/down)
-        let mut yaw_delta = 0.0;
-        let mut pitch_delta = 0.0;
-
-        if input.pressed(KeyCode::ArrowLeft) {
-            yaw_delta += player.rot_speed * dt;
-        }
-        if input.pressed(KeyCode::ArrowRight) {
-            yaw_delta -= player.rot_speed * dt;
-        }
-        if input.pressed(KeyCode::ArrowUp) {
-            pitch_delta += player.rot_speed * dt;
-        }
-        if input.pressed(KeyCode::ArrowDown) {
-            pitch_delta -= player.rot_speed * dt;
-        }
-
-        // Get current yaw from the forward direction projected onto XY plane
-
-        {
-            let scale = if yaw_delta.abs() > 0.0 {
-                0.25
-            } else if movement_xy.length_squared() > 0.0 {
-                0.1
-            } else {
-                0.0
-            };
-
-            let forward_3d = transform.forward().as_vec3();
-            let forward_xy = Vec2::new(forward_3d.x, forward_3d.y);
-            let yaw = forward_xy.y.atan2(forward_xy.x);
-
-            let snap_increment = std::f32::consts::PI / 4.0;
-            let mut yaw_snap = (yaw / snap_increment).round() * snap_increment;
-
-            if yaw_delta < 0.0 && yaw_snap > yaw {
-                yaw_snap -= snap_increment;
-            } else if yaw_delta > 0.0 && yaw_snap < yaw {
-                yaw_snap += snap_increment;
-            }
-
-            let max = scale * player.rot_speed * dt;
-            yaw_delta += (yaw_snap - yaw).clamp(-max, max);
-        }
-
-        // Apply rotation
-        if yaw_delta != 0.0 || pitch_delta != 0.0 {
-            // Apply yaw rotation around the world Z axis
-            if yaw_delta != 0.0 {
-                let yaw_rotation = Quat::from_axis_angle(Vec3::Z, yaw_delta);
-                transform.rotation = yaw_rotation * transform.rotation;
-            }
-
-            // Apply pitch rotation around the local X axis (right vector)
-            if pitch_delta != 0.0 {
-                // Calculate current pitch from the forward vector's Z component
-                let forward_3d = transform.forward().as_vec3();
-                let current_pitch = f32::asin(forward_3d.z.clamp(-1.0, 1.0));
-
-                // Calculate new pitch and clamp to limits
-                let pitch_limit = 70_f32.to_radians();
-                let new_pitch = (current_pitch + pitch_delta).clamp(-pitch_limit, pitch_limit);
-                let actual_pitch_delta = new_pitch - current_pitch;
-
-                // Apply the pitch rotation around the local right (X) axis
-                if actual_pitch_delta.abs() > 0.0001 {
-                    let local_x = transform.right().as_vec3();
-                    let pitch_rotation = Quat::from_axis_angle(local_x, actual_pitch_delta);
-                    transform.rotation = pitch_rotation * transform.rotation;
-                }
-            }
-        }
-
-        // Apply XY plane movement in camera's local orientation (projected to XY plane)
-        if movement_xy != Vec2::ZERO {
-            movement_xy = movement_xy.normalize();
-
-            // Get forward and right directions, but project them onto the XY plane
-            let forward_3d = transform.forward();
-            let right_3d = transform.right();
-
-            // Project to XY plane by zeroing Z component and normalizing
-            let forward_xy = Vec2::new(forward_3d.x, forward_3d.y).normalize_or_zero();
-            let right_xy = Vec2::new(right_3d.x, right_3d.y).normalize_or_zero();
-
-            let move_vec_xy = forward_xy * movement_xy.y + right_xy * movement_xy.x;
-
-            // Calculate new position
-            let new_x = transform.translation.x + move_vec_xy.x * player.speed * dt;
-            let new_y = transform.translation.y + move_vec_xy.y * player.speed * dt;
-
-            // Check collision before moving
-            if collision_map.can_move_to(new_x, new_y, PLAYER_RADIUS) {
-                transform.translation.x = new_x;
-                transform.translation.y = new_y;
-            }
-        }
-
-        // Apply Z axis movement (no collision check for vertical movement)
-        if movement_z != 0.0 {
-            transform.translation.z += movement_z * player.speed * dt;
-        }
-    }
-}
-
-fn update_player_light(
-    player_query: Query<&Transform, With<Player>>,
-    mut light_query: Query<(&mut Transform, &PlayerLight), Without<Player>>,
-) {
-    if let Ok(player_transform) = player_query.single() {
-        // Update all lights using their offsets
-        for (mut light_transform, player_light) in light_query.iter_mut() {
-            light_transform.translation = player_transform.translation + player_light.offset;
-        }
-    }
-}
-
-fn hex_to_color(hex: &str) -> Color {
-    let hex = hex.trim_start_matches('#');
-
-    let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(255) as f32 / 255.0;
-    let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(255) as f32 / 255.0;
-    let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(255) as f32 / 255.0;
-
-    Color::srgb(r, g, b)
-}
-
-fn update_player_light_animation(
-    time: Res<Time>,
-    mut light_query: Query<(&mut PointLight, &mut LightColorAnimation), With<PlayerLight>>,
-) {
-    if let Ok((mut light, mut anim)) = light_query.single_mut() {
-        let dt = time.delta_secs();
-        anim.time += 0.1 * dt * anim.speed;
-
-        let light_yellow = hex_to_color("#e8d599");
-        let red = hex_to_color("#e7844fff");
-        let yellow_white = hex_to_color("#e4bb6f");
-
-        // Create a smooth oscillation through the three colors
-        // Use sine wave that goes 0 -> 1 -> 2 -> 1 -> 0 (one full cycle)
-        let t = (anim.time * std::f32::consts::PI).sin().abs();
-
-        // Map t (0 to 1) to blend between the three colors
-        let color = if t < 0.5 {
-            // Blend from light_yellow to red
-            let blend = t * 2.0; // 0 to 1
-            Color::srgb(
-                light_yellow.to_srgba().red * (1.0 - blend) + red.to_srgba().red * blend,
-                light_yellow.to_srgba().green * (1.0 - blend) + red.to_srgba().green * blend,
-                light_yellow.to_srgba().blue * (1.0 - blend) + red.to_srgba().blue * blend,
-            )
-        } else {
-            // Blend from red to yellow_white
-            let blend = (t - 0.5) * 2.0; // 0 to 1
-            Color::srgb(
-                red.to_srgba().red * (1.0 - blend) + yellow_white.to_srgba().red * blend,
-                red.to_srgba().green * (1.0 - blend) + yellow_white.to_srgba().green * blend,
-                red.to_srgba().blue * (1.0 - blend) + yellow_white.to_srgba().blue * blend,
-            )
-        };
-
-        light.color = color;
-
-        // When we complete a cycle, randomize the speed for next cycle (+/- 20%)
-        if anim.time >= 2.0 {
-            anim.time = 0.0;
-            let mut rng = rand::rng();
-            anim.speed = 1.0 + rng.random_range(-0.2..0.2);
         }
     }
 }

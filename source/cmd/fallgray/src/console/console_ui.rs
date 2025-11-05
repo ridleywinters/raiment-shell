@@ -1,5 +1,5 @@
 use super::ConsoleState;
-use crate::cvars::CVarRegistry;
+use crate::scripting::CVarRegistry;
 use crate::scripting::process_script;
 use crate::ui::PlayerStats;
 use crate::ui_styles::EntityCommandsUIExt;
