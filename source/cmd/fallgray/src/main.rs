@@ -281,6 +281,7 @@ fn update_billboards(
 fn update_weapon_swing(
     time: Res<Time>,
     mouse_button: Res<ButtonInput<MouseButton>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
     toolbar: Res<Toolbar>,
     console_state: Res<ConsoleState>,
     cvars: Res<CVarRegistry>,
@@ -295,8 +296,8 @@ fn update_weapon_swing(
             Visibility::Hidden
         };
 
-        // Check for attack input (left mouse button) - only swing if slot 1 is active
-        if mouse_button.just_pressed(MouseButton::Left)
+        // Check for attack input (left mouse button or spacebar) - only swing if slot 1 is active
+        if (mouse_button.just_pressed(MouseButton::Left) || keyboard.just_pressed(KeyCode::Space))
             && !weapon.is_swinging
             && toolbar.active_slot == 1
             && !console_state.visible
@@ -633,6 +634,7 @@ fn update_spawn_item_on_click(
     mut materials: ResMut<Assets<StandardMaterial>>,
     asset_server: Res<AssetServer>,
     mouse_button: Res<ButtonInput<MouseButton>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
     windows: Query<&bevy::window::Window>,
     camera_query: Query<(&Camera, &GlobalTransform), With<Camera3d>>,
     ground_query: Query<&GlobalTransform, With<GroundPlane>>,
@@ -647,7 +649,7 @@ fn update_spawn_item_on_click(
         return;
     }
 
-    if !mouse_button.just_pressed(MouseButton::Left) {
+    if !mouse_button.just_pressed(MouseButton::Left) && !keyboard.just_pressed(KeyCode::Space) {
         return;
     }
 
