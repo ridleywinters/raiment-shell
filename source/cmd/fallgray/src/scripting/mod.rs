@@ -1,5 +1,6 @@
 mod cmd_add_gold;
 mod cmd_add_stamina;
+mod cmd_do_damage;
 mod cmd_getvar;
 mod cmd_listvars;
 mod cmd_quit;

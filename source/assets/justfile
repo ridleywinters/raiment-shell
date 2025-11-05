@@ -19,6 +19,9 @@ _build-imp: ensure
     build/build-content.ts
     build/build-raven-icons.ts
     build/build-items.ts
+    build/build-matthewsmith-sprites.ts
+    mkdir -p ./base/actors
+    cp -f ${REPO_ROOT}/source/content/actors/actors.yaml ./base/actors/actors.yaml
 
 rebuild: clean build
 

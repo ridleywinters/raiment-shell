@@ -40,12 +40,7 @@ export function AssetBrowserApp(): JSX.Element {
 
                 <Div>
                     {assets &&
-                        groupKeys.filter((groupKey) =>
-                            assets[groupKey].filter((asset) => !asset.filename.startsWith("."))
-                                .length > 0
-                        ).map((
-                            groupKey,
-                        ) => (
+                        groupKeys.map((groupKey) => (
                             <AssetsListView
                                 key={groupKey}
                                 group={groupKey}
@@ -58,12 +53,21 @@ export function AssetBrowserApp(): JSX.Element {
     );
 }
 
-function AssetsListView({ group, assets }: { group: string; assets: FileEntry[] }): JSX.Element {
+function AssetsListView(
+    { group, assets }: { group: string; assets: FileEntry[] },
+): JSX.Element | null {
+    const filtered = assets.filter((asset) =>
+        asset.extension !== "meta.md" && !asset.filename.startsWith(".")
+    ).sort((a, b) => a.filename.localeCompare(b.filename));
+    if (filtered.length === 0) {
+        return null;
+    }
+
     return (
         <Div sl="mb64">
             <Div sl="bold mb16" style={{ borderBottom: "solid 1px #bbb" }}>{group}</Div>
             <Div sl="flex-row-center flex-wrap gap-16 mb16">
-                {assets
+                {filtered
                     .filter((asset) =>
                         asset.extension !== "meta.md" && !asset.filename.startsWith(".")
                     )

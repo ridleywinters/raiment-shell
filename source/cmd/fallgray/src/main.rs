@@ -1,3 +1,4 @@
+mod actor;
 mod camera;
 mod collision;
 mod console;
@@ -8,6 +9,7 @@ mod toolbar;
 mod ui;
 mod ui_styles;
 
+use actor::*;
 use bevy::prelude::*;
 use camera::{CameraPlugin, Player, spawn_camera, spawn_player_lights};
 use collision::{CollisionMap, check_circle_collision};
@@ -31,6 +33,8 @@ struct MapData {
     grid: Vec<String>,
     #[serde(default)]
     items: Vec<ItemPosition>,
+    #[serde(default)]
+    actors: Vec<ActorPosition>,
 }
 
 fn main() {
@@ -71,6 +75,8 @@ fn main() {
             (
                 update_weapon_swing,
                 update_weapon_swing_collision,
+                update_actor_death,
+                update_actor_health_indicators,
                 update_ui,
                 update_billboards,
                 update_spawn_item_on_click,
@@ -200,6 +206,18 @@ fn startup_system(
         items: item_defs_file.items,
     };
 
+    // Load actor definitions
+    let actor_filename = std::env::var("REPO_ROOT")
+        .map(|repo_root| format!("{}/source/assets/base/actors/actors.yaml", repo_root))
+        .unwrap_or_else(|_| "data/actor_definitions.yaml".to_string());
+    let actor_defs_yaml = std::fs::read_to_string(&actor_filename)
+        .unwrap_or_else(|_| panic!("Failed to read {}", actor_filename));
+    let actor_defs_file: ActorDefinitionsFile = serde_yaml::from_str(&actor_defs_yaml)
+        .unwrap_or_else(|_| panic!("Failed to parse {}", actor_filename));
+    let actor_definitions = ActorDefinitions {
+        actors: actor_defs_file.actors,
+    };
+
     // Build collision map
     let height = lines.len();
     let width = lines.iter().map(|l| l.len()).max().unwrap_or(0);
@@ -263,19 +281,6 @@ fn startup_system(
                         Transform::from_translation(Vec3::new(x, y, 0.0)),
                     ));
                 }
-                'c' => {
-                    // Spawn a billboarded NPC sprite
-                    let scale = 3.8;
-                    spawn_billboard_sprite(
-                        &mut commands,
-                        &mut meshes,
-                        &mut materials,
-                        &asset_server,
-                        Vec3::new(x + 4.0, y + 4.0, scale),
-                        "base/sprites/monster-skeleton-01.png",
-                        scale,
-                    );
-                }
                 _ => {}
             }
         }
@@ -317,6 +322,21 @@ fn startup_system(
 
     commands.insert_resource(item_tracker);
     commands.insert_resource(item_definitions);
+
+    // Spawn actors from map
+    for actor_pos in &map_file.map.actors {
+        spawn_actor(
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+            &asset_server,
+            &actor_definitions.actors,
+            Vec3::new(actor_pos.x, actor_pos.y, 0.0), // Z will be set by spawn_actor based on scale
+            &actor_pos.actor_type,
+        );
+    }
+
+    commands.insert_resource(actor_definitions);
 
     commands.insert_resource(bevy::light::AmbientLight {
         color: Color::WHITE,
@@ -487,9 +507,11 @@ fn update_weapon_swing(
 
 fn update_weapon_swing_collision(
     camera_query: Query<&Transform, With<Camera3d>>,
-    billboard_query: Query<&Transform, (With<Billboard>, Without<Camera3d>)>,
+    mut actor_query: Query<(Entity, &Transform, &mut Actor), (With<Billboard>, Without<Item>)>,
     mut weapon_query: Query<&mut WeaponSprite>,
-    cvars: Res<CVarRegistry>,
+    mut cvars: ResMut<CVarRegistry>,
+    mut stats: ResMut<PlayerStats>,
+    actor_definitions: Res<ActorDefinitions>,
 ) {
     let Ok(camera_transform) = camera_query.single() else {
         return;
@@ -526,25 +548,25 @@ fn update_weapon_swing_collision(
             // Calculate right vector perpendicular to forward (for width check)
             let right_xy = Vec2::new(-forward_xy.y, forward_xy.x);
 
-            // Check all billboards
+            // Check all actors (excluding items)
             let mut hit_any = false;
 
-            for billboard_transform in billboard_query.iter() {
-                let billboard_pos = billboard_transform.translation;
-                let billboard_xy = Vec2::new(billboard_pos.x, billboard_pos.y);
+            for (_entity, actor_transform, mut actor) in actor_query.iter_mut() {
+                let actor_pos = actor_transform.translation;
+                let actor_xy = Vec2::new(actor_pos.x, actor_pos.y);
 
-                // Vector from camera to billboard
-                let to_billboard = billboard_xy - Vec2::new(camera_pos.x, camera_pos.y);
+                // Vector from camera to actor
+                let to_actor = actor_xy - Vec2::new(camera_pos.x, camera_pos.y);
 
                 // Project onto forward direction to get distance along view direction
-                let forward_distance = to_billboard.dot(forward_xy);
+                let forward_distance = to_actor.dot(forward_xy);
 
-                // Only check billboards in front of player
+                // Only check actors in front of player
                 if forward_distance < 0.0 {
                     continue;
                 }
 
-                // Check if billboard is within the collision box
+                // Check if actor is within the collision box
                 // Distance check: is it within reach?
                 if forward_distance > check_distance + 4.0 {
                     continue;
@@ -555,10 +577,26 @@ fn update_weapon_swing_collision(
                 }
 
                 // Width check: project onto right vector to get lateral distance
-                let lateral_distance = to_billboard.dot(right_xy).abs();
+                let lateral_distance = to_actor.dot(right_xy).abs();
 
                 if lateral_distance <= check_width {
                     hit_any = true;
+
+                    // Get the actor definition to run the on_hit script
+                    if let Some(actor_def) = actor_definitions.actors.get(&actor.actor_type) {
+                        if !actor_def.on_hit.is_empty() {
+                            let output = scripting::process_script_with_actor(
+                                &actor_def.on_hit,
+                                &mut stats,
+                                &mut cvars,
+                                Some(&mut *actor),
+                            );
+                            for line in &output {
+                                println!("{}", line);
+                            }
+                        }
+                    }
+
                     break;
                 }
             }
@@ -757,6 +795,67 @@ fn spawn_item(
     ));
 }
 
+fn spawn_actor(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    asset_server: &Res<AssetServer>,
+    actor_definitions: &HashMap<String, ActorDefinition>,
+    position: Vec3,
+    actor_key: &str,
+) {
+    let actor_def = actor_definitions
+        .get(actor_key)
+        .unwrap_or_else(|| panic!("Actor definition not found: {}", actor_key));
+
+    let sprite_material = materials.add(StandardMaterial {
+        base_color_texture: Some(load_image_texture(asset_server, &actor_def.sprite)),
+        base_color: Color::WHITE,
+        alpha_mode: bevy::render::alpha::AlphaMode::Blend,
+        unlit: false,
+        cull_mode: None,
+        ..default()
+    });
+
+    use bevy::asset::RenderAssetUsages;
+    use bevy::mesh::{Indices, PrimitiveTopology};
+
+    let scale = actor_def.scale;
+
+    let mut billboard_mesh = Mesh::new(
+        PrimitiveTopology::TriangleList,
+        RenderAssetUsages::default(),
+    );
+
+    let positions = vec![
+        [0.0, -scale, -scale],
+        [0.0, scale, -scale],
+        [0.0, scale, scale],
+        [0.0, -scale, scale],
+    ];
+    billboard_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+    billboard_mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[1.0, 0.0, 0.0]; 4]);
+
+    let uvs = vec![[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]];
+    billboard_mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+
+    billboard_mesh.insert_indices(Indices::U32(vec![0, 1, 2, 0, 2, 3]));
+
+    commands.spawn((
+        Mesh3d(meshes.add(billboard_mesh)),
+        MeshMaterial3d(sprite_material),
+        Transform::from_translation(Vec3::new(position.x, position.y, scale)),
+        Billboard,
+        Actor {
+            actor_type: actor_key.to_string(),
+            health: actor_def.max_health,
+            max_health: actor_def.max_health,
+            scale: actor_def.scale,
+            indicator_entity: None,
+        },
+    ));
+}
+
 fn update_spawn_item_on_click(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -936,6 +1035,106 @@ fn update_save_map_on_input(
                 "Map saved successfully with {} items!",
                 item_tracker.world_positions.len()
             );
+        }
+    }
+}
+
+fn update_actor_death(
+    mut commands: Commands,
+    actor_query: Query<(Entity, &Actor)>,
+    mut stats: ResMut<PlayerStats>,
+    mut cvars: ResMut<CVarRegistry>,
+    actor_definitions: Res<ActorDefinitions>,
+) {
+    for (entity, actor) in actor_query.iter() {
+        if actor.health <= 0.0 {
+            // Get the actor definition to run the on_death script
+            if let Some(actor_def) = actor_definitions.actors.get(&actor.actor_type) {
+                if !actor_def.on_death.is_empty() {
+                    let output =
+                        scripting::process_script(&actor_def.on_death, &mut stats, &mut cvars);
+                    for line in &output {
+                        println!("{}", line);
+                    }
+                }
+            }
+
+            println!("{} defeated!", actor.actor_type);
+
+            // Despawn actor (children like health indicator will be handled by bevy)
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
+fn update_actor_health_indicators(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut actor_query: Query<(Entity, &Transform, &mut Actor)>,
+) {
+    for (actor_entity, _actor_transform, mut actor) in actor_query.iter_mut() {
+        let health_percentage = actor.health / actor.max_health;
+        let should_show_indicator = health_percentage < 0.4;
+
+        if should_show_indicator && actor.indicator_entity.is_none() {
+            // Spawn health indicator as child of actor
+            use bevy::asset::RenderAssetUsages;
+            use bevy::mesh::{Indices, PrimitiveTopology};
+
+            let indicator_scale = 0.15;
+            let indicator_material = materials.add(StandardMaterial {
+                base_color: Color::srgb(1.0, 0.0, 0.0), // Red color
+                alpha_mode: bevy::render::alpha::AlphaMode::Blend,
+                unlit: false,
+                cull_mode: None,
+                ..default()
+            });
+
+            let mut indicator_mesh = Mesh::new(
+                PrimitiveTopology::TriangleList,
+                RenderAssetUsages::default(),
+            );
+
+            let positions = vec![
+                [0.0, -indicator_scale, -indicator_scale],
+                [0.0, indicator_scale, -indicator_scale],
+                [0.0, indicator_scale, indicator_scale],
+                [0.0, -indicator_scale, indicator_scale],
+            ];
+            indicator_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+            indicator_mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[1.0, 0.0, 0.0]; 4]);
+
+            let uvs = vec![[0.0, 1.0], [1.0, 1.0], [1.0, 0.0], [0.0, 0.0]];
+            indicator_mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+
+            indicator_mesh.insert_indices(Indices::U32(vec![0, 1, 2, 0, 2, 3]));
+
+            // Position indicator above actor
+            let indicator_z = actor.scale + 0.5;
+
+            let indicator_entity = commands
+                .spawn((
+                    Mesh3d(meshes.add(indicator_mesh)),
+                    MeshMaterial3d(indicator_material),
+                    Transform::from_translation(Vec3::new(0.0, 0.0, indicator_z)),
+                    Billboard,
+                    HealthIndicator,
+                ))
+                .id();
+
+            // Parent indicator to actor
+            commands
+                .entity(actor_entity)
+                .add_children(&[indicator_entity]);
+
+            actor.indicator_entity = Some(indicator_entity);
+        } else if !should_show_indicator && actor.indicator_entity.is_some() {
+            // Remove health indicator if health recovers
+            if let Some(indicator_entity) = actor.indicator_entity {
+                commands.entity(indicator_entity).despawn();
+                actor.indicator_entity = None;
+            }
         }
     }
 }

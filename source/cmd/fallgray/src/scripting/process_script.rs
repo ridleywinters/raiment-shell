@@ -1,9 +1,11 @@
 use super::cvars::CVarRegistry;
+use crate::actor::Actor;
 use crate::ui::PlayerStats;
 use bevy::prelude::*;
 
 use super::cmd_add_gold::cmd_add_gold;
 use super::cmd_add_stamina::cmd_add_stamina;
+use super::cmd_do_damage::cmd_do_damage;
 use super::cmd_getvar::cmd_getvar;
 use super::cmd_listvars::cmd_listvars;
 use super::cmd_quit::cmd_quit;
@@ -13,6 +15,15 @@ pub fn process_script(
     script: &str,
     stats: &mut ResMut<PlayerStats>,
     cvars: &mut ResMut<CVarRegistry>,
+) -> Vec<String> {
+    process_script_with_actor(script, stats, cvars, None)
+}
+
+pub fn process_script_with_actor(
+    script: &str,
+    stats: &mut ResMut<PlayerStats>,
+    cvars: &mut ResMut<CVarRegistry>,
+    mut actor: Option<&mut Actor>,
 ) -> Vec<String> {
     let mut output = Vec::new();
 
@@ -39,6 +50,13 @@ pub fn process_script(
             "add_gold" => cmd_add_gold(&tokens, stats, cvars),
             "add_stamina" => cmd_add_stamina(&tokens, stats, cvars),
             "quit" => cmd_quit(&tokens, stats, cvars),
+            "do_damage" => {
+                if let Some(ref mut actor_ref) = actor {
+                    cmd_do_damage(&tokens, actor_ref)
+                } else {
+                    "do_damage can only be used on actors".to_string()
+                }
+            }
             _ => format!("Unknown command: {}", tokens.join(" ")),
         };
 

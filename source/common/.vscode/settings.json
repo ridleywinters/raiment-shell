@@ -114,7 +114,7 @@
             {
                 "scope": "keyword",
                 "settings": {
-                    "foreground": "#7b8fa4"
+                    "foreground": "#a2a8ad"
                 }
             },
             {
@@ -144,7 +144,7 @@
             {
                 "scope": "support.type, support.class",
                 "settings": {
-                    "foreground": "#d82baa"
+                    "foreground": "#d89ba5"
                 }
             },
             {

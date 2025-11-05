@@ -82,3 +82,10 @@ map:
     - x: 225.0
       y: 221.0
       item_type: apple
+  actors:
+    - x: 224.0
+      y: 192.0
+      actor_type: skeleton
+    - x: 288.0
+      y: 192.0
+      actor_type: spider
