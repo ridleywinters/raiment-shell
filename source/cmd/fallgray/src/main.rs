@@ -70,6 +70,7 @@ fn main() {
             Update,
             (
                 update_weapon_swing,
+                update_weapon_swing_collision,
                 update_ui,
                 update_billboards,
                 update_spawn_item_on_click,
@@ -91,6 +92,7 @@ struct GroundPlane;
 struct WeaponSprite {
     swing_timer: Timer,
     is_swinging: bool,
+    collision_checked: bool, // Track if we've checked collision this swing
 }
 
 impl Default for WeaponSprite {
@@ -98,6 +100,7 @@ impl Default for WeaponSprite {
         Self {
             swing_timer: Timer::from_seconds(0.4, TimerMode::Once),
             is_swinging: false,
+            collision_checked: false,
         }
     }
 }
@@ -396,6 +399,7 @@ fn update_weapon_swing(
             if !ui_blocked {
                 weapon.is_swinging = true;
                 weapon.swing_timer.reset();
+                weapon.collision_checked = false; // Reset collision check for new swing
             }
         }
 
@@ -469,13 +473,101 @@ fn update_weapon_swing(
             transform.translation = current_pos;
             transform.rotation = Quat::from_rotation_z(current_rotation_z)
                 * Quat::from_rotation_y(current_rotation_y);
-
             // Check if animation is complete
             if weapon.swing_timer.is_finished() {
                 weapon.is_swinging = false;
+                weapon.collision_checked = false;
                 transform.translation = rest_pos;
                 transform.rotation =
                     Quat::from_rotation_z(rest_rotation_z) * Quat::from_rotation_y(rest_rotation_y);
+            }
+        }
+    }
+}
+
+fn update_weapon_swing_collision(
+    camera_query: Query<&Transform, With<Camera3d>>,
+    billboard_query: Query<&Transform, (With<Billboard>, Without<Camera3d>)>,
+    mut weapon_query: Query<&mut WeaponSprite>,
+    cvars: Res<CVarRegistry>,
+) {
+    let Ok(camera_transform) = camera_query.single() else {
+        return;
+    };
+
+    for mut weapon in weapon_query.iter_mut() {
+        // Only check collision once during the swing phase
+        if !weapon.is_swinging || weapon.collision_checked {
+            continue;
+        }
+
+        let progress = weapon.swing_timer.fraction();
+        let windup_end = cvars.get_f32("weapon.windup_end");
+        let swing_end = cvars.get_f32("weapon.swing_end");
+
+        // Check collision during the thrust phase (when weapon is extended)
+        // We'll check at about 50% through the thrust phase for best timing
+        let thrust_check_point = windup_end + (swing_end - windup_end) * 0.5;
+
+        if progress >= thrust_check_point && !weapon.collision_checked {
+            weapon.collision_checked = true;
+
+            // Get camera position and forward direction
+            let camera_pos = camera_transform.translation;
+            let forward = camera_transform.forward().as_vec3();
+
+            // Project forward direction to XY plane and normalize
+            let forward_xy = Vec2::new(forward.x, forward.y).normalize_or_zero();
+
+            // Define collision box in front of player
+            let check_distance = 8.0; // How far in front to check
+            let check_width = 4.0; // Width of the collision box (half-width on each side)
+
+            // Calculate right vector perpendicular to forward (for width check)
+            let right_xy = Vec2::new(-forward_xy.y, forward_xy.x);
+
+            // Check all billboards
+            let mut hit_any = false;
+
+            for billboard_transform in billboard_query.iter() {
+                let billboard_pos = billboard_transform.translation;
+                let billboard_xy = Vec2::new(billboard_pos.x, billboard_pos.y);
+
+                // Vector from camera to billboard
+                let to_billboard = billboard_xy - Vec2::new(camera_pos.x, camera_pos.y);
+
+                // Project onto forward direction to get distance along view direction
+                let forward_distance = to_billboard.dot(forward_xy);
+
+                // Only check billboards in front of player
+                if forward_distance < 0.0 {
+                    continue;
+                }
+
+                // Check if billboard is within the collision box
+                // Distance check: is it within reach?
+                if forward_distance > check_distance + 4.0 {
+                    continue;
+                }
+
+                if forward_distance < check_distance - 4.0 {
+                    continue;
+                }
+
+                // Width check: project onto right vector to get lateral distance
+                let lateral_distance = to_billboard.dot(right_xy).abs();
+
+                if lateral_distance <= check_width {
+                    hit_any = true;
+                    break;
+                }
+            }
+
+            // Print collision status
+            if hit_any {
+                println!("collision!");
+            } else {
+                println!("no collision");
             }
         }
     }
