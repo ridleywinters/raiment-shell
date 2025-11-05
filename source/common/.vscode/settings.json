@@ -55,10 +55,6 @@
     "window.zoomLevel": 0.75,
     "editor.fontSize": 15,
 
-    "workbench.colorCustomizations": {
-        "editor.background": "#171717"
-    },
-
     // Formatter configuration
     "[markdown]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode",
@@ -83,5 +79,84 @@
     },
     "[jsonc]": {
         "editor.defaultFormatter": "denoland.vscode-deno"
+    },
+
+    //
+    // Color customizations
+    //
+
+    "workbench.colorCustomizations": {
+        "editor.background": "#131212",
+
+        "editorBracketHighlight.foreground1": "#a6605b",
+        "editorBracketHighlight.foreground2": "#7a214a",
+        "editorBracketHighlight.foreground3": "#8e5c5f",
+        "editorBracketHighlight.foreground4": "#7c1123",
+        "editorBracketHighlight.foreground5": "#765863",
+        "editorBracketHighlight.foreground6": "#3260b5"
+    },
+    "editor.tokenColorCustomizations": {
+        "textMateRules": [
+            {
+                "scope": "string",
+                "settings": {
+                    "foreground": "#eab257"
+                }
+            },
+            {
+                "scope": "constant.numeric",
+                "settings": {
+                    "foreground": "#a20f60"
+                }
+            },
+            {
+                "scope": "keyword",
+                "settings": {
+                    "foreground": "#7b8fa4"
+                }
+            },
+            {
+                "scope": "keyword.control",
+                "settings": {
+                    "foreground": "#a0a8b1"
+                }
+            },
+            {
+                "scope": "variable",
+                "settings": {
+                    "foreground": "#25b3eb"
+                }
+            },
+            {
+                "scope": "entity.name.function,",
+                "settings": {
+                    "foreground": "#22b1ac"
+                }
+            },
+            {
+                "scope": "entity.name.type, support.type, support.class",
+                "settings": {
+                    "foreground": "#3b84c4"
+                }
+            },
+            {
+                "scope": "comment",
+                "settings": {
+                    "foreground": "#976d6d"
+                }
+            },
+            {
+                "scope": "keyword.operator",
+                "settings": {
+                    "foreground": "#6d8e74"
+                }
+            },
+            {
+                "scope": "meta.attribute.rust",
+                "settings": {
+                    "foreground": "#6d5d77"
+                }
+            }
+        ]
     }
 }

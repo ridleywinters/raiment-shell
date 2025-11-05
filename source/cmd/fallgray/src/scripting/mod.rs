@@ -8,6 +8,9 @@ mod cvars;
 mod process_script;
 mod scripting_plugin;
 
+#[cfg(test)]
+mod cvars_test;
+
 pub use cvars::*;
 pub use process_script::*;
 pub use scripting_plugin::ScriptingPlugin;

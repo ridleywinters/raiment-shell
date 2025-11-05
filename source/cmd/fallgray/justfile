@@ -16,7 +16,8 @@ dev-build:
 run: ensure lint
     cargo run --release
 
-test:
+test: ensure
+    cargo test
 
 lint: build
     cargo clippy --fix --allow-dirty --allow-staged
