@@ -8,10 +8,13 @@
 /// The idea is borrowed from old Quake-style console variables.
 ///
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Represents a console variable value
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(tag = "type", content = "value")]
+#[serde(rename_all = "snake_case")]
 pub enum CVarValue {
     Float(f32),
     Int(i32),
@@ -170,5 +173,14 @@ impl CVarRegistry {
         result.sort_by(|a, b| a.0.cmp(&b.0));
 
         result
+    }
+
+    pub fn save_to_yaml(&self, path: &str) -> Result<(), String> {
+        let yaml = serde_yaml::to_string(&self.vars)
+            .map_err(|e| format!("Failed to serialize cvars: {}", e))?;
+
+        std::fs::write(path, yaml).map_err(|e| format!("Failed to write cvars.yaml: {}", e))?;
+
+        Ok(())
     }
 }
