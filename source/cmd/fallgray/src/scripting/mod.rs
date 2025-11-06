@@ -11,6 +11,8 @@ mod process_script;
 mod scripting_plugin;
 
 #[cfg(test)]
+mod cmd_setvar_test;
+#[cfg(test)]
 mod cvars_test;
 
 pub use cvars::*;

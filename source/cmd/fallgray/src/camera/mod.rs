@@ -3,6 +3,7 @@ mod components;
 mod cursor_toggle;
 mod mouse_look_settings;
 mod player;
+mod player_light;
 mod systems;
 
 pub use camera_plugin::CameraPlugin;
@@ -10,4 +11,5 @@ pub use components::*;
 pub use cursor_toggle::*;
 pub use mouse_look_settings::MouseLookSettings;
 pub use player::Player;
-pub use systems::{spawn_camera, spawn_player_lights, update_camera_control_system};
+pub use player_light::{spawn_player_lights, update_player_light, update_player_light_animation};
+pub use systems::{spawn_camera, update_camera_control_system};

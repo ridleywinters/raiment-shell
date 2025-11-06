@@ -53,11 +53,11 @@ pub fn click_to_lock_cursor(
     if mouse_button.just_pressed(MouseButton::Left) {
         // Check if click is not on any UI element
         let ui_clicked = ui_interaction_query.iter().any(|i| *i != Interaction::None);
-        
+
         if !ui_clicked {
             // Engage cursor lock
             mouse_look.cursor_locked = true;
-            
+
             if let Ok(mut cursor) = cursor_query.single_mut() {
                 cursor.grab_mode = CursorGrabMode::Locked;
                 cursor.visible = false;

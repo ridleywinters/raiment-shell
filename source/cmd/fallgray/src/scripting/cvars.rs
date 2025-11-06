@@ -16,33 +16,40 @@ use std::collections::HashMap;
 #[serde(tag = "type", content = "value")]
 #[serde(rename_all = "snake_case")]
 pub enum CVarValue {
-    Float(f32),
-    Int(i32),
+    F32(f32),
+    Int32(i32),
     String(String),
+    Bool(bool),
 }
 
 impl CVarValue {
     pub fn as_f32(&self) -> Option<f32> {
         match self {
-            CVarValue::Float(v) => Some(*v),
-            CVarValue::Int(v) => Some(*v as f32),
-            CVarValue::String(s) => s.parse().ok(),
+            CVarValue::F32(v) => Some(*v),
+            _ => None,
         }
     }
 
     pub fn as_i32(&self) -> Option<i32> {
         match self {
-            CVarValue::Float(v) => Some(*v as i32),
-            CVarValue::Int(v) => Some(*v),
-            CVarValue::String(s) => s.parse().ok(),
+            CVarValue::Int32(v) => Some(*v),
+            _ => None,
+        }
+    }
+
+    pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            CVarValue::Bool(b) => Some(*b),
+            _ => None,
         }
     }
 
     pub fn as_string(&self) -> String {
         match self {
-            CVarValue::Float(v) => v.to_string(),
-            CVarValue::Int(v) => v.to_string(),
+            CVarValue::F32(v) => v.to_string(),
+            CVarValue::Int32(v) => v.to_string(),
             CVarValue::String(s) => s.clone(),
+            CVarValue::Bool(b) => b.to_string(),
         }
     }
 }
@@ -50,9 +57,10 @@ impl CVarValue {
 impl std::fmt::Display for CVarValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CVarValue::Float(v) => write!(f, "{}", v),
-            CVarValue::Int(v) => write!(f, "{}", v),
+            CVarValue::F32(v) => write!(f, "{}", v),
+            CVarValue::Int32(v) => write!(f, "{}", v),
             CVarValue::String(s) => write!(f, "{}", s),
+            CVarValue::Bool(b) => write!(f, "{}", b),
         }
     }
 }
@@ -110,7 +118,11 @@ impl CVarRegistry {
     }
 
     pub fn init_f32(&mut self, name: &str, value: f32) {
-        self.init(name, CVarValue::Float(value)).unwrap();
+        self.init(name, CVarValue::F32(value)).unwrap();
+    }
+
+    pub fn init_bool(&mut self, name: &str, value: bool) {
+        self.init(name, CVarValue::Bool(value)).unwrap();
     }
 
     pub fn set(&mut self, name: &str, value: CVarValue) -> Result<(), String> {
@@ -121,9 +133,10 @@ impl CVarRegistry {
 
         // Check that the new value type matches the existing type
         match (existing, &value) {
-            (CVarValue::Float(_), CVarValue::Float(_)) => {}
-            (CVarValue::Int(_), CVarValue::Int(_)) => {}
+            (CVarValue::F32(_), CVarValue::F32(_)) => {}
+            (CVarValue::Int32(_), CVarValue::Int32(_)) => {}
             (CVarValue::String(_), CVarValue::String(_)) => {}
+            (CVarValue::Bool(_), CVarValue::Bool(_)) => {}
             _ => {
                 return Err(format!(
                     "Type mismatch for variable '{}': cannot change from {:?} to {:?}",
@@ -139,7 +152,7 @@ impl CVarRegistry {
     }
 
     pub fn set_f32(&mut self, name: &str, value: f32) {
-        self.set(name, CVarValue::Float(value)).unwrap();
+        self.set(name, CVarValue::F32(value)).unwrap();
     }
 
     pub fn get(&self, name: &str) -> Option<&CVarValue> {
@@ -156,6 +169,10 @@ impl CVarRegistry {
 
     pub fn get_string(&self, name: &str) -> String {
         self.vars.get(name).map(|v| v.as_string()).unwrap()
+    }
+
+    pub fn get_bool(&self, name: &str) -> bool {
+        self.vars.get(name).and_then(|v| v.as_bool()).unwrap()
     }
 
     pub fn exists(&self, name: &str) -> bool {
@@ -179,7 +196,7 @@ impl CVarRegistry {
         // Sort variables alphabetically by name and create a YAML mapping
         let mut sorted_vars: Vec<(&String, &CVarValue)> = self.vars.iter().collect();
         sorted_vars.sort_by(|a, b| a.0.cmp(b.0));
-        
+
         // Create a YAML mapping that preserves insertion order
         let mut mapping = serde_yaml::Mapping::new();
         for (key, value) in sorted_vars {
@@ -188,7 +205,7 @@ impl CVarRegistry {
                 .map_err(|e| format!("Failed to serialize value for {}: {}", key, e))?;
             mapping.insert(key_value, value_value);
         }
-        
+
         let yaml = serde_yaml::to_string(&mapping)
             .map_err(|e| format!("Failed to serialize cvars: {}", e))?;
 

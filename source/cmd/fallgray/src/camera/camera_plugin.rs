@@ -1,5 +1,6 @@
 use super::cursor_toggle::*;
 use super::mouse_look_settings::MouseLookSettings;
+use super::player_light::*;
 use super::systems::*;
 use bevy::prelude::*;
 

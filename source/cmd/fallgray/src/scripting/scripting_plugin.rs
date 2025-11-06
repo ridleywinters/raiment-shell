@@ -22,15 +22,11 @@ fn init_camera_cvars(mut cvars: ResMut<CVarRegistry>) {
     // Arrow key sensitivity (radians per second)
     cvars.init_f32("arrow_sensitivity", 2.75);
 
-    // Mouse smooth mode (1 = enabled, 0 = disabled)
-    if let Err(e) = cvars.init("mouse_smooth", super::cvars::CVarValue::Int(1)) {
-        eprintln!("Failed to init mouse_smooth: {}", e);
-    }
+    // Mouse smooth mode
+    cvars.init_bool("mouse.smooth", true);
 
-    // Mouse invert Y axis (1 = inverted, 0 = normal)
-    if let Err(e) = cvars.init("mouse.invert_y", super::cvars::CVarValue::Int(1)) {
-        eprintln!("Failed to init mouse.invert_y: {}", e);
-    }
+    // Mouse invert Y axis
+    cvars.init_bool("mouse.invert_y", true);
 }
 
 fn save_cvars_on_startup(cvars: Res<CVarRegistry>) {

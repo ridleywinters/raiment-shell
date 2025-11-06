@@ -87,41 +87,41 @@ impl WeaponDefinitions {
             let prefix = format!("weapon.{}", weapon_type);
             
             // Register stat CVars
-            let _ = cvars.init(&format!("{}.attack_power", prefix), CVarValue::Int(weapon.attack_power));
-            let _ = cvars.init(&format!("{}.swing_duration", prefix), CVarValue::Float(weapon.swing_duration));
-            let _ = cvars.init(&format!("{}.max_charge_time", prefix), CVarValue::Float(weapon.max_charge_time));
-            let _ = cvars.init(&format!("{}.charge_bonus", prefix), CVarValue::Float(weapon.charge_bonus));
-            let _ = cvars.init(&format!("{}.range", prefix), CVarValue::Float(weapon.range));
-            let _ = cvars.init(&format!("{}.hitbox_width", prefix), CVarValue::Float(weapon.hitbox_width));
-            let _ = cvars.init(&format!("{}.hitbox_height", prefix), CVarValue::Float(weapon.hitbox_height));
+            let _ = cvars.init(&format!("{}.attack_power", prefix), CVarValue::Int32(weapon.attack_power));
+            let _ = cvars.init(&format!("{}.swing_duration", prefix), CVarValue::F32(weapon.swing_duration));
+            let _ = cvars.init(&format!("{}.max_charge_time", prefix), CVarValue::F32(weapon.max_charge_time));
+            let _ = cvars.init(&format!("{}.charge_bonus", prefix), CVarValue::F32(weapon.charge_bonus));
+            let _ = cvars.init(&format!("{}.range", prefix), CVarValue::F32(weapon.range));
+            let _ = cvars.init(&format!("{}.hitbox_width", prefix), CVarValue::F32(weapon.hitbox_width));
+            let _ = cvars.init(&format!("{}.hitbox_height", prefix), CVarValue::F32(weapon.hitbox_height));
             
             // Register animation keyframe CVars - Rest
-            let _ = cvars.init(&format!("{}.rest_pos_x", prefix), CVarValue::Float(weapon.rest_keyframe.position.x));
-            let _ = cvars.init(&format!("{}.rest_pos_y", prefix), CVarValue::Float(weapon.rest_keyframe.position.y));
-            let _ = cvars.init(&format!("{}.rest_pos_z", prefix), CVarValue::Float(weapon.rest_keyframe.position.z));
-            let _ = cvars.init(&format!("{}.rest_rotation_z", prefix), CVarValue::Float(weapon.rest_keyframe.rotation.0));
-            let _ = cvars.init(&format!("{}.rest_rotation_y", prefix), CVarValue::Float(weapon.rest_keyframe.rotation.1));
+            let _ = cvars.init(&format!("{}.rest_pos_x", prefix), CVarValue::F32(weapon.rest_keyframe.position.x));
+            let _ = cvars.init(&format!("{}.rest_pos_y", prefix), CVarValue::F32(weapon.rest_keyframe.position.y));
+            let _ = cvars.init(&format!("{}.rest_pos_z", prefix), CVarValue::F32(weapon.rest_keyframe.position.z));
+            let _ = cvars.init(&format!("{}.rest_rotation_z", prefix), CVarValue::F32(weapon.rest_keyframe.rotation.0));
+            let _ = cvars.init(&format!("{}.rest_rotation_y", prefix), CVarValue::F32(weapon.rest_keyframe.rotation.1));
             
             // Register animation keyframe CVars - Windup
-            let _ = cvars.init(&format!("{}.windup_pos_x", prefix), CVarValue::Float(weapon.windup_keyframe.position.x));
-            let _ = cvars.init(&format!("{}.windup_pos_y", prefix), CVarValue::Float(weapon.windup_keyframe.position.y));
-            let _ = cvars.init(&format!("{}.windup_pos_z", prefix), CVarValue::Float(weapon.windup_keyframe.position.z));
-            let _ = cvars.init(&format!("{}.windup_rotation_z", prefix), CVarValue::Float(weapon.windup_keyframe.rotation.0));
-            let _ = cvars.init(&format!("{}.windup_rotation_y", prefix), CVarValue::Float(weapon.windup_keyframe.rotation.1));
+            let _ = cvars.init(&format!("{}.windup_pos_x", prefix), CVarValue::F32(weapon.windup_keyframe.position.x));
+            let _ = cvars.init(&format!("{}.windup_pos_y", prefix), CVarValue::F32(weapon.windup_keyframe.position.y));
+            let _ = cvars.init(&format!("{}.windup_pos_z", prefix), CVarValue::F32(weapon.windup_keyframe.position.z));
+            let _ = cvars.init(&format!("{}.windup_rotation_z", prefix), CVarValue::F32(weapon.windup_keyframe.rotation.0));
+            let _ = cvars.init(&format!("{}.windup_rotation_y", prefix), CVarValue::F32(weapon.windup_keyframe.rotation.1));
             
             // Register animation keyframe CVars - Swing
-            let _ = cvars.init(&format!("{}.swing_pos_x", prefix), CVarValue::Float(weapon.swing_keyframe.position.x));
-            let _ = cvars.init(&format!("{}.swing_pos_y", prefix), CVarValue::Float(weapon.swing_keyframe.position.y));
-            let _ = cvars.init(&format!("{}.swing_pos_z", prefix), CVarValue::Float(weapon.swing_keyframe.position.z));
-            let _ = cvars.init(&format!("{}.swing_rotation_z", prefix), CVarValue::Float(weapon.swing_keyframe.rotation.0));
-            let _ = cvars.init(&format!("{}.swing_rotation_y", prefix), CVarValue::Float(weapon.swing_keyframe.rotation.1));
+            let _ = cvars.init(&format!("{}.swing_pos_x", prefix), CVarValue::F32(weapon.swing_keyframe.position.x));
+            let _ = cvars.init(&format!("{}.swing_pos_y", prefix), CVarValue::F32(weapon.swing_keyframe.position.y));
+            let _ = cvars.init(&format!("{}.swing_pos_z", prefix), CVarValue::F32(weapon.swing_keyframe.position.z));
+            let _ = cvars.init(&format!("{}.swing_rotation_z", prefix), CVarValue::F32(weapon.swing_keyframe.rotation.0));
+            let _ = cvars.init(&format!("{}.swing_rotation_y", prefix), CVarValue::F32(weapon.swing_keyframe.rotation.1));
             
             // Register animation keyframe CVars - Thrust
-            let _ = cvars.init(&format!("{}.thrust_pos_x", prefix), CVarValue::Float(weapon.thrust_keyframe.position.x));
-            let _ = cvars.init(&format!("{}.thrust_pos_y", prefix), CVarValue::Float(weapon.thrust_keyframe.position.y));
-            let _ = cvars.init(&format!("{}.thrust_pos_z", prefix), CVarValue::Float(weapon.thrust_keyframe.position.z));
-            let _ = cvars.init(&format!("{}.thrust_rotation_z", prefix), CVarValue::Float(weapon.thrust_keyframe.rotation.0));
-            let _ = cvars.init(&format!("{}.thrust_rotation_y", prefix), CVarValue::Float(weapon.thrust_keyframe.rotation.1));
+            let _ = cvars.init(&format!("{}.thrust_pos_x", prefix), CVarValue::F32(weapon.thrust_keyframe.position.x));
+            let _ = cvars.init(&format!("{}.thrust_pos_y", prefix), CVarValue::F32(weapon.thrust_keyframe.position.y));
+            let _ = cvars.init(&format!("{}.thrust_pos_z", prefix), CVarValue::F32(weapon.thrust_keyframe.position.z));
+            let _ = cvars.init(&format!("{}.thrust_rotation_z", prefix), CVarValue::F32(weapon.thrust_keyframe.rotation.0));
+            let _ = cvars.init(&format!("{}.thrust_rotation_y", prefix), CVarValue::F32(weapon.thrust_keyframe.rotation.1));
         }
     }
     
