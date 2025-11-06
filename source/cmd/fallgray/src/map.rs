@@ -313,6 +313,16 @@ impl Map {
         let world_pos = Vec3::new(world_x, world_y, actor_def.scale);
         let texture_handle = load_weapon_texture(asset_server, &actor_def.sprite);
 
+        // Create behavior based on definition
+        let behavior: Option<Box<dyn crate::ai::ActorBehavior>> = match actor_def.behavior.as_str() {
+            "wander" => Some(Box::new(crate::ai::wander_behavior::WanderBehavior::new())),
+            "stand" => Some(Box::new(crate::ai::stand_behavior::StandBehavior)),
+            _ => {
+                warn!("Unknown behavior type: {}, defaulting to wander", actor_def.behavior);
+                Some(Box::new(crate::ai::wander_behavior::WanderBehavior::new()))
+            }
+        };
+
         let entity = commands
             .spawn((
                 Billboard,
@@ -326,6 +336,11 @@ impl Map {
                     fire_resistance: 0.0,
                     ice_resistance: 0.0,
                     poison_resistance: 0.0,
+                    actor_radius: 1.2, // 3/4 of player radius (1.6)
+                    speed_multiplier: actor_def.speed,
+                    behavior,
+                    is_moving: false,
+                    base_z: actor_def.scale,
                 },
                 Mesh3d(meshes.add(Self::create_billboard_mesh(actor_def.scale))),
                 MeshMaterial3d(materials.add(StandardMaterial {

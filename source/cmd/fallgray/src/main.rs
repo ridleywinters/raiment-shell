@@ -1,4 +1,5 @@
 mod actor;
+mod ai;
 mod camera;
 mod collision;
 mod combat;
@@ -13,6 +14,7 @@ mod toolbar;
 mod ui;
 mod ui_styles;
 use actor::*;
+use ai::AIPlugin;
 use bevy::prelude::*;
 use camera::{CameraPlugin, Player, spawn_camera, spawn_player_lights};
 use collision::check_circle_collision;
@@ -56,6 +58,7 @@ fn main() {
         )
         .add_plugins(ScriptingPlugin)
         .add_plugins(CameraPlugin)
+        .add_plugins(AIPlugin)
         .add_plugins(ConsolePlugin {})
         .add_plugins(toolbar::ToolbarPlugin)
         .add_systems(
@@ -183,9 +186,7 @@ fn startup_system(
     };
 
     // Load actor definitions
-    let actor_filename = std::env::var("REPO_ROOT")
-        .map(|repo_root| format!("{}/source/assets/base/actors/actors.yaml", repo_root))
-        .unwrap_or_else(|_| "data/actor_definitions.yaml".to_string());
+    let actor_filename = "data/actor_definitions.yaml".to_string();
     let actor_defs_yaml = std::fs::read_to_string(&actor_filename)
         .unwrap_or_else(|_| panic!("Failed to read {}", actor_filename));
     let actor_defs_file: ActorDefinitionsFile = serde_yaml::from_str(&actor_defs_yaml)
@@ -583,63 +584,6 @@ fn update_weapon_swing_collision(
             }
         }
     }
-}
-
-fn spawn_billboard_sprite(
-    commands: &mut Commands,
-    meshes: &mut ResMut<Assets<Mesh>>,
-    materials: &mut ResMut<Assets<StandardMaterial>>,
-    asset_server: &Res<AssetServer>,
-    position: Vec3,
-    sprite_path: &str,
-    scale: f32,
-) {
-    let sprite_material = materials.add(StandardMaterial {
-        base_color_texture: Some(load_image_texture(asset_server, sprite_path)),
-        base_color: Color::WHITE,
-        alpha_mode: bevy::render::alpha::AlphaMode::Blend,
-        unlit: false,
-        cull_mode: None,
-        ..default()
-    });
-
-    use bevy::asset::RenderAssetUsages;
-    use bevy::mesh::{Indices, PrimitiveTopology};
-
-    let mut billboard_mesh = Mesh::new(
-        PrimitiveTopology::TriangleList,
-        RenderAssetUsages::default(),
-    );
-
-    let positions = vec![
-        [0.0, -scale, -scale], // bottom-left
-        [0.0, scale, -scale],  // top-left
-        [0.0, scale, scale],   // top-right
-        [0.0, -scale, scale],  // bottom-right
-    ];
-    billboard_mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-
-    billboard_mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, vec![[1.0, 0.0, 0.0]; 4]);
-
-    let uvs = vec![
-        [0.0, 1.0], // top-left -> bottom-left in texture
-        [1.0, 1.0], // top-right -> bottom-right in texture
-        [1.0, 0.0], // bottom-right -> top-right in texture
-        [0.0, 0.0], // bottom-left -> top-left in texture
-    ];
-    billboard_mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
-
-    billboard_mesh.insert_indices(Indices::U32(vec![
-        0, 1, 2, // first triangle
-        0, 2, 3, // second triangle
-    ]));
-
-    commands.spawn((
-        Mesh3d(meshes.add(billboard_mesh)),
-        MeshMaterial3d(sprite_material),
-        Transform::from_translation(position),
-        Billboard,
-    ));
 }
 
 fn spawn_weapon_sprite(
