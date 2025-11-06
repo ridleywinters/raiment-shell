@@ -5,6 +5,7 @@
         "github.copilot-chat",
         "denoland.vscode-deno",
         "1yib.rust-bundle",
-        "esbenp.prettier-vscode"
+        "esbenp.prettier-vscode",
+        "dnut.rewrap-revived"
     ]
 }

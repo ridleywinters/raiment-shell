@@ -1,16 +1,19 @@
 import { parseHexColor } from "../colors/parse_hex_color.ts";
-import { ColorHexString } from "../colors/types.ts";
+import { ColorHex, RGBAU8 } from "../colors/types.ts";
 
-export function stringifyGIMPPalette(colors: ColorHexString[]): string {
+export function stringifyGIMPPalette(colors: ColorHex[]): string {
     const lines: string[] = [];
     lines.push("GIMP Palette");
     lines.push("#");
     colors.forEach((hex, index) => {
         // Format: R G B Name (3 characters wide for RGB values)
-        const { r, g, b } = parseHexColor(hex);
-        const sr = r.toString().padStart(3, " ");
-        const sg = g.toString().padStart(3, " ");
-        const sb = b.toString().padStart(3, " ");
+        const rgb = parseHexColor(hex);
+        if ((rgb as RGBAU8).a !== undefined) {
+            throw new Error("Unexpected alpha channel in color: " + hex);
+        }
+        const sr = rgb.r.toString().padStart(3, " ");
+        const sg = rgb.g.toString().padStart(3, " ");
+        const sb = rgb.b.toString().padStart(3, " ");
         lines.push(`${sr} ${sg} ${sb}\tColor ${index}`);
     });
     return lines.join("\n");

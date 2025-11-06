@@ -1,13 +1,14 @@
-import { ColorHexString } from "../colors/types.ts";
+import * as core from "@raiment-core";
+import { ColorHex } from "../colors/types.ts";
 
 /**
  * Parses a GIMP Palette (.gpl) file content and returns an array of hex color strings.
  *
  * Returns null on an invalid format.
  */
-export function parseGIMPPalette(content: string): ColorHexString[] | null {
+export function parseGIMPPalette(content: string): ColorHex[] | null {
     const lines = content.split("\n");
-    const colors: ColorHexString[] = [];
+    const colors: ColorHex[] = [];
 
     // Validate that first line is "GIMP Palette"
     if (lines.length === 0 || !lines[0].trim().startsWith("GIMP Palette")) {
@@ -28,9 +29,9 @@ export function parseGIMPPalette(content: string): ColorHexString[] | null {
             console.warn("Invalid color line (not enough components):", line);
             return null;
         }
-        const r = Math.min(Math.max(parseInt(parts[0], 10), 0), 255);
-        const g = Math.min(Math.max(parseInt(parts[1], 10), 0), 255);
-        const b = Math.min(Math.max(parseInt(parts[2], 10), 0), 255);
+        const r = core.clamp(parseInt(parts[0], 10), 0, 255);
+        const g = core.clamp(parseInt(parts[1], 10), 0, 255);
+        const b = core.clamp(parseInt(parts[2], 10), 0, 255);
         const hr = r.toString(16).padStart(2, "0");
         const hg = g.toString(16).padStart(2, "0");
         const hb = b.toString(16).padStart(2, "0");
