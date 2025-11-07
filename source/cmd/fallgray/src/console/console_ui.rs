@@ -31,7 +31,7 @@ pub(super) fn startup_console(mut commands: Commands) {
 
     // Console overlay (initially hidden)
     commands
-        .spawn(ConsoleContainer)
+        .spawn((crate::game_state_systems::GameEntity, ConsoleContainer))
         .styles(&vec![
             "display-none",
             "width-100% height-50% absolute top-0 left-0 flex-col p8",

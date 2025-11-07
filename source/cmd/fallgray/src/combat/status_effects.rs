@@ -1,6 +1,6 @@
 /// Status effects system for combat
 /// 
-/// Handles temporary effects like burning (fire), frozen (ice), and poisoned.
+/// Handles temporary status effects on actors.
 
 use bevy::prelude::*;
 use super::damage::DamageType;
@@ -27,28 +27,11 @@ pub struct StatusEffect {
 /// Types of status effects
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StatusEffectType {
-    /// Burning: deals fire damage over time
-    Burning,
-    
     /// Frozen: slows movement (not implemented yet)
     Frozen,
-    
-    /// Poisoned: deals poison damage over time
-    Poisoned,
 }
 
 impl StatusEffect {
-    /// Create a new burning effect
-    pub fn burning(duration: f32, damage_per_tick: i32) -> Self {
-        Self {
-            effect_type: StatusEffectType::Burning,
-            duration,
-            tick_interval: 1.0, // Damage every second
-            time_since_tick: 0.0,
-            damage_per_tick,
-        }
-    }
-    
     /// Create a new frozen effect
     pub fn frozen(duration: f32) -> Self {
         Self {
@@ -57,17 +40,6 @@ impl StatusEffect {
             tick_interval: 0.0,
             time_since_tick: 0.0,
             damage_per_tick: 0,
-        }
-    }
-    
-    /// Create a new poisoned effect
-    pub fn poisoned(duration: f32, damage_per_tick: i32) -> Self {
-        Self {
-            effect_type: StatusEffectType::Poisoned,
-            duration,
-            tick_interval: 2.0, // Damage every 2 seconds
-            time_since_tick: 0.0,
-            damage_per_tick,
         }
     }
     
@@ -99,14 +71,8 @@ pub fn update_status_effects(
         if effect.should_tick(dt) {
             actor.health -= effect.damage_per_tick as f32;
             
-            // Print feedback
+            // Print feedback (currently only Frozen, which doesn't deal damage)
             match effect.effect_type {
-                StatusEffectType::Burning => {
-                    println!("{} takes {} fire damage from burning", actor.actor_type, effect.damage_per_tick);
-                }
-                StatusEffectType::Poisoned => {
-                    println!("{} takes {} poison damage", actor.actor_type, effect.damage_per_tick);
-                }
                 StatusEffectType::Frozen => {
                     // Frozen doesn't deal damage
                 }
@@ -118,14 +84,8 @@ pub fn update_status_effects(
             commands.entity(entity).remove::<StatusEffect>();
             
             match effect.effect_type {
-                StatusEffectType::Burning => {
-                    println!("{} is no longer burning", actor.actor_type);
-                }
                 StatusEffectType::Frozen => {
                     println!("{} thawed out", actor.actor_type);
-                }
-                StatusEffectType::Poisoned => {
-                    println!("{} is no longer poisoned", actor.actor_type);
                 }
             }
         }
@@ -135,42 +95,12 @@ pub fn update_status_effects(
 /// Apply a status effect to an actor based on damage type
 /// Returns true if an effect was applied
 pub fn apply_status_effect(
-    commands: &mut Commands,
-    entity: Entity,
+    _commands: &mut Commands,
+    _entity: Entity,
     damage_type: DamageType,
-    actor_type: &str,
+    _actor_type: &str,
 ) -> bool {
     match damage_type {
-        DamageType::Fire => {
-            // 30% chance to ignite
-            if rand::random::<f32>() < 0.3 {
-                commands.entity(entity).insert(StatusEffect::burning(5.0, 2));
-                println!("{} is burning!", actor_type);
-                true
-            } else {
-                false
-            }
-        }
-        DamageType::Ice => {
-            // 50% chance to freeze
-            if rand::random::<f32>() < 0.5 {
-                commands.entity(entity).insert(StatusEffect::frozen(3.0));
-                println!("{} is frozen!", actor_type);
-                true
-            } else {
-                false
-            }
-        }
-        DamageType::Poison => {
-            // 40% chance to poison
-            if rand::random::<f32>() < 0.4 {
-                commands.entity(entity).insert(StatusEffect::poisoned(8.0, 1));
-                println!("{} is poisoned!", actor_type);
-                true
-            } else {
-                false
-            }
-        }
         DamageType::Physical => {
             // Physical damage doesn't apply status effects
             false

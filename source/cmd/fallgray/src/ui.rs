@@ -1,3 +1,5 @@
+use crate::camera::{Health, Player};
+use crate::game_state_systems::GameEntity;
 use crate::texture_loader::load_image_texture;
 use crate::ui_styles::EntityCommandsUIExt;
 use bevy::prelude::*;
@@ -29,6 +31,7 @@ pub struct FatigueBar;
 pub struct GoldText;
 
 pub fn startup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
+    info!("Spawning playing state UI");
     // Initialize player stats
     commands.insert_resource(PlayerStats::default());
 
@@ -47,7 +50,7 @@ pub fn startup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     // Status bars at bottom left
     commands
-        .spawn_empty()
+        .spawn(GameEntity)
         .styles(&vec![
             "absolute width-100% height-100% p8",
             "justify-start align-end",
@@ -102,7 +105,7 @@ pub fn startup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     // Gold text (keeping at top for now)
     commands
-        .spawn_empty()
+        .spawn(GameEntity)
         .style("width-100% height-100% justify-start align-start p20 absolute")
         .with_children(|parent| {
             parent
@@ -113,11 +116,17 @@ pub fn startup_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 pub fn update_ui(
-    stats: Res<PlayerStats>,
+    player_query: Query<&Health, With<Player>>,
+    mut stats: ResMut<PlayerStats>,
     mut health_query: Query<&mut Node, (With<HealthBar>, Without<FatigueBar>)>,
     mut fatigue_query: Query<&mut Node, (With<FatigueBar>, Without<HealthBar>)>,
     mut gold_query: Query<&mut Text, With<GoldText>>,
 ) {
+    // Sync Health component to PlayerStats
+    if let Ok(health) = player_query.single() {
+        stats.health = (health.current / health.max * 100.0).clamp(0.0, 100.0);
+    }
+
     // Update health bar width
     if let Ok(mut node) = health_query.single_mut() {
         node.width = Val::Percent(stats.health);

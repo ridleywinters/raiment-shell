@@ -165,6 +165,7 @@ impl Map {
                 actor_pos.x as f32,
                 actor_pos.y as f32,
                 &actor_pos.actor_type,
+                None, // Logging system initialized after map load
             );
         }
 
@@ -233,6 +234,7 @@ impl Map {
 
         let entity = commands
             .spawn((
+                crate::game_state_systems::GameEntity,
                 Mesh3d(meshes.add(Cuboid::new(GRID_SIZE, GRID_SIZE, wall_height))),
                 MeshMaterial3d(materials.add(StandardMaterial {
                     base_color_texture: Some(texture_handle),
@@ -272,6 +274,7 @@ impl Map {
 
         let entity = commands
             .spawn((
+                crate::game_state_systems::GameEntity,
                 Billboard,
                 Item {
                     interaction_radius: 2.0,
@@ -304,6 +307,7 @@ impl Map {
         world_x: f32,
         world_y: f32,
         actor_type: &str,
+        logging_system: Option<&mut crate::logging::ActorLoggingSystem>,
     ) {
         let Some(actor_def) = actor_defs.actors.get(actor_type) else {
             warn!("Unknown actor type: {}", actor_type);
@@ -317,6 +321,7 @@ impl Map {
         let behavior: Option<Box<dyn crate::ai::ActorBehavior>> = match actor_def.behavior.as_str() {
             "wander" => Some(Box::new(crate::ai::wander_behavior::WanderBehavior::new())),
             "stand" => Some(Box::new(crate::ai::stand_behavior::StandBehavior)),
+            "aggressive" => Some(Box::new(crate::ai::aggressive_behavior::AggressiveBehavior::new())),
             _ => {
                 warn!("Unknown behavior type: {}, defaulting to wander", actor_def.behavior);
                 Some(Box::new(crate::ai::wander_behavior::WanderBehavior::new()))
@@ -325,6 +330,7 @@ impl Map {
 
         let entity = commands
             .spawn((
+                crate::game_state_systems::GameEntity,
                 Billboard,
                 crate::actor::Actor {
                     actor_type: actor_type.to_string(),
@@ -333,14 +339,17 @@ impl Map {
                     scale: actor_def.scale,
                     armor: 0,
                     physical_resistance: 0.0,
-                    fire_resistance: 0.0,
-                    ice_resistance: 0.0,
-                    poison_resistance: 0.0,
                     actor_radius: 1.2, // 3/4 of player radius (1.6)
                     speed_multiplier: actor_def.speed,
                     behavior,
                     is_moving: false,
                     base_z: actor_def.scale,
+                    attack_damage: actor_def.attack_damage,
+                    attack_range: actor_def.attack_range,
+                    attack_cooldown: actor_def.attack_cooldown,
+                    attack_timer: 0.0,
+                    stun_timer: 0.0,
+                    attack_state: crate::actor::ActorAttackState::Idle,
                 },
                 Mesh3d(meshes.add(Self::create_billboard_mesh(actor_def.scale))),
                 MeshMaterial3d(materials.add(StandardMaterial {
@@ -352,6 +361,22 @@ impl Map {
                 Transform::from_translation(world_pos),
             ))
             .id();
+
+        // Create logger for this actor
+        let actor_id = format!("{}_{:04}", actor_type, entity.index());
+        if let Some(logging) = logging_system {
+            if let Err(e) = logging.get_or_create_actor_log(entity, &actor_id) {
+                eprintln!("Failed to create actor log: {}", e);
+            } else {
+                logging.write_event(entity, &format!("SPAWN at ({:.1}, {:.1})", world_x, world_y));
+            }
+        }
+        
+        // Attach ActorLogger component
+        commands.entity(entity).insert(crate::logging::ActorLogger { 
+            actor_id,
+            initialized: false,
+        });
 
         // Track entity
         self.actors.insert(

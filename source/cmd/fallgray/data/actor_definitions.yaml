@@ -5,8 +5,11 @@ actors:
     max_health: 30.0
     on_hit: "do_damage 10"
     on_death: "# skeleton defeated"
-    behavior: "wander"
-    speed: 0.5
+    behavior: "aggressive"
+    speed: 0.8
+    attack_damage: 10
+    attack_range: 4.0
+    attack_cooldown: 1.2
   
   spider:
     sprite: "base/sprites/wolf.png"

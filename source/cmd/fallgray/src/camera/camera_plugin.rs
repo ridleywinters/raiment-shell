@@ -1,8 +1,8 @@
 use super::cursor_toggle::*;
 use super::mouse_look_settings::MouseLookSettings;
-use super::player_light::*;
 use super::systems::*;
 use bevy::prelude::*;
+use crate::game_state::GameState;
 
 pub struct CameraPlugin;
 
@@ -16,9 +16,7 @@ impl Plugin for CameraPlugin {
                     click_to_lock_cursor,
                     handle_console_cursor,
                     update_camera_control_system,
-                    update_player_light,
-                    update_player_light_animation,
-                ),
+                ).run_if(in_state(GameState::Playing)),
             );
     }
 }

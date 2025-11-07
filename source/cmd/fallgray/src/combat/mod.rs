@@ -9,6 +9,7 @@ pub mod damage;
 pub mod status_effects;
 pub mod weapon;
 pub mod visual_feedback;
+pub mod actor_attack;
 
 pub use attack_state::{AttackState, CombatInput, StateTransition};
 pub use audio_feedback::{CombatAudio, play_swing_sound, play_hit_sound};
@@ -20,3 +21,4 @@ pub use visual_feedback::{
     update_camera_shake, update_damage_numbers, update_blood_particles,
     spawn_damage_number, spawn_blood_particles,
 };
+pub use actor_attack::{update_actor_attacks, update_actor_stun, update_actor_attack_animation, handle_actor_hit};

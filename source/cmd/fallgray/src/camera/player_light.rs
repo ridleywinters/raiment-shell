@@ -1,14 +1,59 @@
-/// Player light systems
-///
-/// Handles lighting that follows the player camera, including torch flickering animation.
+//! Player light system
+//!
+//! Defines the Bevy components and systems for lights that follow the player position.
+//! Adds subtle flickering animation to simulate a torch-like effect.
+//!
+//! As a future direction, a "torch" item might be added rather than this being an
+//! always-on sort of functionality.
+//!
+
 use bevy::prelude::*;
 use rand::Rng;
 
-use super::components::{LightColorAnimation, PlayerLight};
 use super::player::Player;
+use crate::game_state::GameState;
+
+//=============================================================================
+// Player Light Plugin
+//=============================================================================
+
+
+/// Encapsulates the player light functionality
+pub struct PlayerLightPlugin;
+
+impl Plugin for PlayerLightPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(
+            Update,
+            (
+                update_player_light, //
+                update_player_light_animation,
+            )
+                .run_if(in_state(GameState::Playing)),
+        );
+    }
+}
+
+/// Light that follows the player with a fixed offset and animation state
+#[derive(Component)]
+struct PlayerLight {
+    offset: Vec3,
+    animation_time: f32,
+    animation_speed: f32,
+}
+
+impl PlayerLight {
+    fn new(offset: Vec3, animation_time: f32, animation_speed: f32) -> Self {
+        Self {
+            offset,
+            animation_time,
+            animation_speed,
+        }
+    }
+}
 
 /// Update player light positions to follow the camera
-pub fn update_player_light(
+fn update_player_light(
     player_query: Query<&Transform, With<Player>>,
     mut light_query: Query<(&mut Transform, &PlayerLight), Without<Player>>,
 ) {
@@ -21,13 +66,13 @@ pub fn update_player_light(
 }
 
 /// Animate torch light color with flickering effect
-pub fn update_player_light_animation(
+fn update_player_light_animation(
     time: Res<Time>,
-    mut light_query: Query<(&mut PointLight, &mut LightColorAnimation), With<PlayerLight>>,
+    mut light_query: Query<(&mut PointLight, &mut PlayerLight)>,
 ) {
-    for (mut light, mut anim) in light_query.iter_mut() {
+    for (mut light, mut player_light) in light_query.iter_mut() {
         let dt = time.delta_secs();
-        anim.time += 0.1 * dt * anim.speed;
+        player_light.animation_time += 0.1 * dt * player_light.animation_speed;
 
         let light_yellow = hex_to_color("#f0ead5ff");
         let red = hex_to_color("#eac2acff");
@@ -35,7 +80,9 @@ pub fn update_player_light_animation(
 
         // Create a smooth oscillation through the three colors
         // Use sine wave that goes 0 -> 1 -> 2 -> 1 -> 0 (one full cycle)
-        let t = (anim.time * std::f32::consts::PI).sin().abs();
+        let t = (player_light.animation_time * std::f32::consts::PI)
+            .sin()
+            .abs();
 
         // Map t (0 to 1) to blend between the three colors
         let color = if t < 0.5 {
@@ -59,10 +106,10 @@ pub fn update_player_light_animation(
         light.color = color;
 
         // When we complete a cycle, randomize the speed for next cycle (+/- 20%)
-        if anim.time >= 2.0 {
-            anim.time = 0.0;
+        if player_light.animation_time >= 2.0 {
+            player_light.animation_time = 0.0;
             let mut rng = rand::rng();
-            anim.speed = 1.0 + rng.random_range(-0.2..0.2);
+            player_light.animation_speed = 1.0 + rng.random_range(-0.2..0.2);
         }
     }
 }
@@ -71,6 +118,7 @@ pub fn update_player_light_animation(
 pub fn spawn_player_lights(commands: &mut Commands, position: Vec3) {
     // Add a point light that follows the player
     commands.spawn((
+        crate::game_state_systems::GameEntity,
         PointLight {
             color: Color::WHITE,
             intensity: 1000000.0,
@@ -79,14 +127,12 @@ pub fn spawn_player_lights(commands: &mut Commands, position: Vec3) {
             ..default()
         },
         Transform::from_xyz(position.x + 0.0, position.y + 1.5, position.z + 4.0),
-        PlayerLight {
-            offset: Vec3::new(0.0, 1.5, 4.0),
-        },
-        LightColorAnimation::new(0.0, 0.1),
+        PlayerLight::new(Vec3::new(0.0, 1.5, 4.0), 0.0, 0.1),
     ));
 
     // Add a second point light that follows the player with no Y offset
     commands.spawn((
+        crate::game_state_systems::GameEntity,
         PointLight {
             color: Color::WHITE,
             intensity: 1000000.0,
@@ -95,10 +141,7 @@ pub fn spawn_player_lights(commands: &mut Commands, position: Vec3) {
             ..default()
         },
         Transform::from_xyz(position.x + 0.5, position.y - 0.5, position.z + 4.0),
-        PlayerLight {
-            offset: Vec3::new(0.5, -0.5, 4.0),
-        },
-        LightColorAnimation::new(0.5, 0.2),
+        PlayerLight::new(Vec3::new(0.5, -0.5, 4.0), 0.5, 0.2),
     ));
 }
 

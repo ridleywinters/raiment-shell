@@ -6,6 +6,5 @@
 
 ## Guidelines
 
-- Put tests in their own `_test.rst` files
-- Sprites SHOULD BE rendering WITH lighting
+- Sprites SHOULD BE rendered WITH lighting
 - Helper functions should be defined after public functions in the same file

@@ -146,14 +146,22 @@ static COMPILED_PATTERNS: LazyLock<Vec<(Regex, StyleHandler)>> = LazyLock::new(|
             }),
         ),
         (
-            r"gap(\d+)",
+            "flex-col-center",
+            Void(|b| {
+                b.node.flex_direction = FlexDirection::Column;
+                b.node.align_items = AlignItems::Center;
+                b.node.justify_content = JustifyContent::Center;
+            }),
+        ),
+        (
+            r"gap-?(\d+)",
             I32(|b, v| {
                 b.node.column_gap = Val::Px(v as f32);
                 b.node.row_gap = Val::Px(v as f32);
             }),
         ),
         (
-            r"grow(\d+)",
+            r"grow-?(\d+)",
             I32(|b, v| {
                 b.node.flex_grow = v as f32;
             }),
@@ -199,62 +207,62 @@ static COMPILED_PATTERNS: LazyLock<Vec<(Regex, StyleHandler)>> = LazyLock::new(|
         // Margins
         //
         (
-            r"mt(\d+)",
+            r"mt-?(\d+)",
             I32(|b, v| b.node.margin = UiRect::top(Val::Px(v as f32))),
         ),
         (
-            r"mb(\d+)",
+            r"mb-?(\d+)",
             I32(|b, v| b.node.margin = UiRect::bottom(Val::Px(v as f32))),
         ),
         (
-            r"ml(\d+)",
+            r"ml-?(\d+)",
             I32(|b, v| b.node.margin = UiRect::left(Val::Px(v as f32))),
         ),
         (
-            r"mr(\d+)",
+            r"mr-?(\d+)",
             I32(|b, v| b.node.margin = UiRect::right(Val::Px(v as f32))),
         ),
         (
-            r"mx(\d+)",
+            r"mx-?(\d+)",
             I32(|b, v| b.node.margin = UiRect::horizontal(Val::Px(v as f32))),
         ),
         (
-            r"my(\d+)",
+            r"my-?(\d+)",
             I32(|b, v| b.node.margin = UiRect::vertical(Val::Px(v as f32))),
         ),
         (
-            r"m(\d+)",
+            r"m-?(\d+)",
             I32(|b, v| b.node.margin = UiRect::all(Val::Px(v as f32))),
         ),
         //
         // Padding
         //
         (
-            r"pt(\d+)",
+            r"pt-?(\d+)",
             I32(|b, v| b.node.padding = UiRect::top(Val::Px(v as f32))),
         ),
         (
-            r"pb(\d+)",
+            r"pb-?(\d+)",
             I32(|b, v| b.node.padding = UiRect::bottom(Val::Px(v as f32))),
         ),
         (
-            r"pl(\d+)",
+            r"pl-?(\d+)",
             I32(|b, v| b.node.padding = UiRect::left(Val::Px(v as f32))),
         ),
         (
-            r"pr(\d+)",
+            r"pr-?(\d+)",
             I32(|b, v| b.node.padding = UiRect::right(Val::Px(v as f32))),
         ),
         (
-            r"px(\d+)",
+            r"px-?(\d+)",
             I32(|b, v| b.node.padding = UiRect::horizontal(Val::Px(v as f32))),
         ),
         (
-            r"py(\d+)",
+            r"py-?(\d+)",
             I32(|b, v| b.node.padding = UiRect::vertical(Val::Px(v as f32))),
         ),
         (
-            r"p(\d+)",
+            r"p-?(\d+)",
             I32(|b, v| b.node.padding = UiRect::all(Val::Px(v as f32))),
         ),
         //

@@ -1,6 +1,5 @@
-use super::components::*;
 use super::mouse_look_settings::MouseLookSettings;
-use super::player::Player;
+use super::player::{Player, Health};
 use crate::collision::PLAYER_RADIUS;
 use crate::console::ConsoleState;
 use crate::map::Map;
@@ -226,7 +225,9 @@ pub fn update_camera_control_system(
 pub fn spawn_camera(commands: &mut Commands, position: Vec3) -> Entity {
     commands
         .spawn((
+            crate::game_state_systems::GameEntity,
             Camera3d::default(),
+            Camera { order: 1, ..default() },
             Transform::from_xyz(position.x, position.y, position.z).looking_at(
                 Vec3::new(position.x - 1.0, position.y, position.z * 1.01),
                 Vec3::Z,
@@ -236,6 +237,7 @@ pub fn spawn_camera(commands: &mut Commands, position: Vec3) -> Entity {
                 yaw_velocity: 0.0,
                 pitch_velocity: 0.0,
             },
+            Health::new(100.0),
         ))
         .id()
 }

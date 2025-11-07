@@ -4,10 +4,14 @@ mod camera;
 mod collision;
 mod combat;
 mod console;
+mod game_state;
+mod game_state_systems;
 mod item;
+mod logging;
 mod map;
 #[cfg(test)]
 mod map_test;
+mod menu_ui;
 mod scripting;
 mod texture_loader;
 mod toolbar;
@@ -16,7 +20,7 @@ mod ui_styles;
 use actor::*;
 use ai::AIPlugin;
 use bevy::prelude::*;
-use camera::{CameraPlugin, Player, spawn_camera, spawn_player_lights};
+use camera::{CameraPlugin, Player, PlayerLightPlugin, spawn_camera, spawn_player_lights};
 use collision::check_circle_collision;
 use combat::{
     AttackState, CombatAudio, CombatInput, StateTransition, WeaponDefinitions, apply_status_effect,
@@ -24,8 +28,12 @@ use combat::{
     update_blood_particles, update_camera_shake, update_damage_numbers, update_status_effects,
 };
 use console::*;
+use game_state::GameState;
+use game_state_systems::*;
 use item::*;
+use logging::ActorLoggingSystem;
 use map::Map;
+use menu_ui::*;
 use scripting::{CVarRegistry, ScriptingPlugin};
 use std::f32::consts::FRAC_PI_2;
 use texture_loader::{load_image_texture, load_weapon_texture};
@@ -38,7 +46,7 @@ fn main() {
     // Get asset path from REPO_ROOT environment variable
     let asset_path = std::env::var("REPO_ROOT")
         .map(|repo_root| format!("{}/source/assets", repo_root))
-        .unwrap_or_else(|_| "assets".to_string());
+        .unwrap();
 
     App::new()
         .add_plugins(
@@ -56,18 +64,19 @@ fn main() {
                     ..default()
                 }),
         )
+        .init_state::<GameState>()
+        .add_systems(Startup, (log_startup, setup_ui_camera))
         .add_plugins(ScriptingPlugin)
         .add_plugins(CameraPlugin)
+        .add_plugins(PlayerLightPlugin)
         .add_plugins(AIPlugin)
         .add_plugins(ConsolePlugin {})
         .add_plugins(toolbar::ToolbarPlugin)
-        .add_systems(
-            Startup,
-            (
-                startup_system, //
-                startup_ui,
-            ),
-        )
+        // Main Menu systems
+        .add_systems(OnEnter(GameState::MainMenu), (spawn_main_menu, unlock_cursor_on_menu))
+        .add_systems(OnExit(GameState::MainMenu), cleanup_main_menu)
+        // Playing state systems
+        .add_systems(OnEnter(GameState::Playing), (startup_system, startup_ui))
         .add_systems(
             Update,
             (
@@ -84,9 +93,42 @@ fn main() {
                 update_spawn_item_on_click,
                 update_save_map_on_input,
                 update_check_item_collision,
-            ),
+                detect_player_death,
+                initialize_actor_logs,
+                periodic_flush_actor_logs,
+            )
+                .run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            OnExit(GameState::Playing),
+            (cleanup_actor_logging, cleanup_game_entities),
+        )
+        // Game Over systems
+        .add_systems(OnEnter(GameState::GameOver), (spawn_game_over, unlock_cursor_on_menu))
+        .add_systems(OnExit(GameState::GameOver), cleanup_game_over)
+        // Menu button systems (active in all menu states)
+        .add_systems(
+            Update,
+            (handle_menu_buttons, update_button_visuals).run_if(not(in_state(GameState::Playing))),
         )
         .run();
+}
+
+fn log_startup(current_state: Res<State<GameState>>) {
+    info!("=== Game Starting ===");
+    info!("Initial game state: {:?}", current_state.get());
+}
+
+/// Setup a persistent UI camera for menus
+fn setup_ui_camera(mut commands: Commands) {
+    info!("Spawning persistent UI camera for menus");
+    commands.spawn((
+        Camera2d,
+        Camera {
+            order: 0,
+            ..default()
+        },
+    ));
 }
 
 #[derive(Component)]
@@ -158,6 +200,7 @@ fn startup_system(
     });
 
     commands.spawn((
+        GameEntity,
         Mesh3d(plane_mesh.clone()),
         MeshMaterial3d(plane_material2.clone()),
         // Rotate 90 degrees around X to make it XY plane (facing Z)
@@ -167,6 +210,7 @@ fn startup_system(
     ));
 
     commands.spawn((
+        GameEntity,
         Mesh3d(plane_mesh.clone()),
         MeshMaterial3d(plane_material2.clone()),
         Transform::from_rotation(Quat::from_rotation_x(3.0 * FRAC_PI_2))
@@ -215,6 +259,20 @@ fn startup_system(
         &actor_definitions,
     )
     .expect("Failed to load map");
+
+    // Initialize actor logging system
+    match ActorLoggingSystem::create_session() {
+        Ok(logging_system) => {
+            info!(
+                "Actor logging initialized: {:?}",
+                logging_system.session_folder
+            );
+            commands.insert_resource(logging_system);
+        }
+        Err(e) => {
+            eprintln!("Failed to initialize actor logging: {}", e);
+        }
+    }
 
     commands.insert_resource(map);
     commands.insert_resource(item_definitions);
@@ -515,12 +573,7 @@ fn update_weapon_swing_collision(
             let charge_ratio = (weapon.charge_progress / weapon_def.max_charge_time).min(1.0);
 
             // Get target resistance based on damage type
-            let resistance = match weapon_def.damage_type {
-                combat::DamageType::Physical => actor.physical_resistance,
-                combat::DamageType::Fire => actor.fire_resistance,
-                combat::DamageType::Ice => actor.ice_resistance,
-                combat::DamageType::Poison => actor.poison_resistance,
-            };
+            let resistance = actor.physical_resistance;
 
             // Calculate damage
             let damage_result =
@@ -528,6 +581,9 @@ fn update_weapon_swing_collision(
 
             // Apply damage
             actor.health -= damage_result.amount as f32;
+
+            // Apply stun when hit
+            combat::handle_actor_hit(&mut actor);
 
             // Spawn visual feedback
             // Camera shake
@@ -643,6 +699,7 @@ fn spawn_weapon_sprite(
 
     let weapon_entity = commands
         .spawn((
+            GameEntity,
             Mesh3d(meshes.add(weapon_mesh)),
             MeshMaterial3d(sprite_material),
             Transform::from_translation(rest_pos),
