@@ -1,9 +1,9 @@
-use bevy::prelude::*;
-use crate::map::Map;
-use crate::scripting::{self, CVarRegistry};
-use crate::ui::PlayerStats;
 use super::components::Actor;
 use super::definitions::ActorDefinitions;
+use crate::hud::PlayerStats;
+use crate::scripting::{self, CVarRegistry};
+use crate::world::Map;
+use bevy::prelude::*;
 
 /// System to handle actor death and cleanup
 pub fn update_actor_death(

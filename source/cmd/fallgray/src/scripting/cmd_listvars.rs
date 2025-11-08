@@ -1,5 +1,5 @@
 use super::cvars::CVarRegistry;
-use crate::ui::PlayerStats;
+use crate::hud::PlayerStats;
 use bevy::prelude::*;
 
 /// Handle the listvars command - lists all console variables

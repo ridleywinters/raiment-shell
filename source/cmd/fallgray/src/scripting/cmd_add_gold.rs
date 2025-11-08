@@ -1,5 +1,5 @@
 use super::cvars::CVarRegistry;
-use crate::ui::PlayerStats;
+use crate::hud::PlayerStats;
 use bevy::prelude::*;
 
 pub fn cmd_add_gold(

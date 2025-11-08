@@ -6,13 +6,10 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
-pub mod editor;
-
 use crate::actor::{ActorDefinitions, ActorPosition};
 use crate::game_state::GamePlayEntity;
 use crate::item::{Item, ItemDefinitions, ItemPosition};
-use crate::rendering::Billboard;
-use crate::texture_loader::{load_image_texture, load_weapon_texture};
+use crate::rendering::{Billboard, load_image_texture, load_weapon_texture};
 
 /// Grid size for walls (8×8 grid)
 const GRID_SIZE: f32 = 8.0;

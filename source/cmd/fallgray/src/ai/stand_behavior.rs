@@ -1,5 +1,5 @@
 use super::ActorBehavior;
-use crate::map::Map;
+use crate::world::Map;
 use bevy::prelude::*;
 
 /// Stand behavior - actor does nothing

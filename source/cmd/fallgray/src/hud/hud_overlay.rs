@@ -1,6 +1,6 @@
 use crate::camera::Player;
 use crate::game_state::GamePlayEntity;
-use crate::texture_loader::load_image_texture;
+use crate::rendering::load_image_texture;
 use crate::ui_styles::EntityCommandsUIExt;
 use bevy::prelude::*;
 

@@ -1,9 +1,9 @@
 use super::mouse_look_settings::MouseLookSettings;
 use super::player::Player;
-use crate::collision::PLAYER_RADIUS;
+use crate::world::PLAYER_RADIUS;
 use crate::console::ConsoleState;
 use crate::game_state::GamePlayEntity;
-use crate::map::Map;
+use crate::world::Map;
 use crate::scripting::CVarRegistry;
 use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;

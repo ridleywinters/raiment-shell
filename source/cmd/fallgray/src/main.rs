@@ -1,44 +1,31 @@
 mod actor;
 mod ai;
 mod camera;
-mod collision;
 mod combat;
 mod console;
 mod game_state;
+mod hud;
 mod item;
-mod logging;
-mod map;
-#[cfg(test)]
-mod map_test;
 mod menu;
 mod rendering;
 mod scripting;
-mod texture_loader;
-mod toolbar;
-mod ui;
 mod ui_styles;
 mod weapon;
 mod world;
 use actor::ActorPlugin;
-use actor::*;
 use ai::AIPlugin;
 use bevy::prelude::*;
 use camera::{CameraPlugin, Player, PlayerLightPlugin, update_camera_shake};
-use collision::check_circle_collision;
 use combat::{update_blood_particles, update_damage_numbers, update_status_effects};
 use console::*;
 use game_state::{GamePlayEntity, GameState, GameStatePlugin};
+use hud::{startup_ui, update_ui, Toolbar};
 use item::ItemPlugin;
-use item::*;
-use map::Map;
-use map::editor::MapEditorPlugin;
 use menu::MenuPlugin;
 use rendering::update_billboards;
 use scripting::{CVarRegistry, ScriptingPlugin};
-use toolbar::Toolbar;
-use ui::*;
 use weapon::WeaponPlugin;
-use world::WorldPlugin;
+use world::{Map, MapEditorPlugin, WorldPlugin};
 
 // MapFile and MapData are now defined in map.rs
 
@@ -74,7 +61,7 @@ fn main() {
         .add_plugins(ActorPlugin)
         .add_plugins(ItemPlugin)
         .add_plugins(ConsolePlugin {})
-        .add_plugins(toolbar::ToolbarPlugin)
+        .add_plugins(hud::ToolbarPlugin)
         .add_plugins(WeaponPlugin)
         .add_plugins(WorldPlugin)
         .add_plugins(MapEditorPlugin)

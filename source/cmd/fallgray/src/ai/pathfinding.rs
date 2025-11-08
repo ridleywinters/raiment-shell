@@ -1,4 +1,4 @@
-use crate::map::Map;
+use crate::world::Map;
 use pathfinding::prelude::astar;
 
 const GRID_SIZE: f32 = 8.0;

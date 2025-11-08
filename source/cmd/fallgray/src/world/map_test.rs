@@ -1,4 +1,4 @@
-use super::map::*;
+use super::*;
 
 #[test]
 fn test_load_map_file_succeeds() {

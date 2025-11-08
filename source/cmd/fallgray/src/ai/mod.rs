@@ -1,4 +1,4 @@
-use crate::map::Map;
+use crate::world::Map;
 use bevy::prelude::*;
 
 pub mod aggressive_behavior;

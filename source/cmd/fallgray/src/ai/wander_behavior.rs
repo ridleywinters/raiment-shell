@@ -1,6 +1,6 @@
 use super::ActorBehavior;
 use super::pathfinding;
-use crate::map::Map;
+use crate::world::Map;
 use bevy::prelude::*;
 use rand::Rng;
 

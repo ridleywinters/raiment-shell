@@ -1,5 +1,5 @@
 use super::cvars::{CVarRegistry, CVarValue};
-use crate::ui::PlayerStats;
+use crate::hud::PlayerStats;
 use bevy::prelude::*;
 
 /// Parse a string value into the appropriate CVarValue based on the existing variable's type

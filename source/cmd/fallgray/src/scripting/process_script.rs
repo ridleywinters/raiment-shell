@@ -1,6 +1,6 @@
 use super::cvars::CVarRegistry;
 use crate::actor::Actor;
-use crate::ui::PlayerStats;
+use crate::hud::PlayerStats;
 use bevy::prelude::*;
 
 use super::cmd_add_gold::cmd_add_gold;

@@ -1,10 +1,9 @@
-use bevy::prelude::*;
+use super::{GroundPlane, Map};
 use crate::console::ConsoleState;
 use crate::game_state::GameState;
+use crate::hud::Toolbar;
 use crate::item::ItemDefinitions;
-use crate::toolbar::Toolbar;
-use crate::world::GroundPlane;
-use super::Map;
+use bevy::prelude::*;
 
 /// Debug/Development system to spawn items by clicking on the ground plane
 pub fn update_spawn_item_on_click(
@@ -150,10 +149,7 @@ impl Plugin for MapEditorPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (
-                update_spawn_item_on_click,
-                update_save_map_on_input,
-            )
+            (update_spawn_item_on_click, update_save_map_on_input)
                 .run_if(in_state(GameState::Playing)),
         );
     }

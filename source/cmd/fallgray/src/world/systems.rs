@@ -1,13 +1,13 @@
-use bevy::prelude::*;
+use super::Map;
 use crate::actor::{ActorDefinitions, ActorDefinitionsFile};
 use crate::camera::{spawn_camera, spawn_player_lights};
 use crate::combat::{CombatAudio, WeaponDefinitions};
 use crate::game_state::GamePlayEntity;
 use crate::item::{ItemDefinitions, ItemDefinitionsFile};
-use crate::map::Map;
+use crate::rendering::load_image_texture;
 use crate::scripting::CVarRegistry;
-use crate::texture_loader::load_image_texture;
 use crate::weapon::spawn_weapon_sprite;
+use bevy::prelude::*;
 use std::f32::consts::FRAC_PI_2;
 
 #[derive(Component)]

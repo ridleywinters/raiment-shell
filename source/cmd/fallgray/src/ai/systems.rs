@@ -1,7 +1,7 @@
 use crate::actor::Actor;
 use crate::combat::{update_actor_attack_animation, update_actor_attacks, update_actor_stun};
 use crate::game_state::GameState;
-use crate::map::Map;
+use crate::world::Map;
 use bevy::prelude::*;
 
 const WIGGLE_AMPLITUDE: f32 = 0.1;

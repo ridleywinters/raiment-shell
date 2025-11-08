@@ -8,7 +8,7 @@ use crate::console::ConsoleState;
 use crate::item::Item;
 use crate::rendering::Billboard;
 use crate::scripting::CVarRegistry;
-use crate::toolbar::Toolbar;
+use crate::hud::Toolbar;
 use crate::actor::Actor;
 use super::components::WeaponSprite;
 use super::easing::{ease_in_out_cubic, ease_out_quad};

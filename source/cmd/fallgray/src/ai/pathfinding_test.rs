@@ -1,5 +1,5 @@
-use crate::ai::pathfinding::{find_path, world_to_grid, grid_to_world};
-use crate::map::Map;
+use crate::ai::pathfinding::{find_path, grid_to_world, world_to_grid};
+use crate::world::{Map, TileType};
 use std::collections::HashMap;
 
 #[test]
@@ -23,10 +23,10 @@ fn test_pathfinding_simple_path() {
     let mut collision_grid = HashMap::new();
     for x in 0..5 {
         for y in 0..5 {
-            collision_grid.insert((x, y), crate::map::TileType::Empty);
+            collision_grid.insert((x, y), TileType::Empty);
         }
     }
-    
+
     let map = Map {
         width: 5,
         height: 5,
@@ -36,11 +36,11 @@ fn test_pathfinding_simple_path() {
         item_world_positions: Vec::new(),
         actors: HashMap::new(),
     };
-    
+
     // Find path from (4.0, 4.0) to (20.0, 20.0)
     let path = find_path(&map, 4.0, 4.0, 20.0, 20.0);
     assert!(path.is_some());
-    
+
     let path = path.unwrap();
     assert!(!path.is_empty());
     // First position should be near start, last should be near goal
@@ -54,12 +54,12 @@ fn test_pathfinding_blocked_destination() {
     let mut collision_grid = HashMap::new();
     for x in 0..5 {
         for y in 0..5 {
-            collision_grid.insert((x, y), crate::map::TileType::Empty);
+            collision_grid.insert((x, y), TileType::Empty);
         }
     }
     // Block the destination
-    collision_grid.insert((2, 2), crate::map::TileType::Wall { height: 1.0 });
-    
+    collision_grid.insert((2, 2), TileType::Wall { height: 1.0 });
+
     let map = Map {
         width: 5,
         height: 5,
@@ -69,7 +69,7 @@ fn test_pathfinding_blocked_destination() {
         item_world_positions: Vec::new(),
         actors: HashMap::new(),
     };
-    
+
     // Try to find path to blocked location
     let path = find_path(&map, 4.0, 4.0, 20.0, 20.0);
     assert!(path.is_none());

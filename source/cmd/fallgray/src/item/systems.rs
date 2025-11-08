@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 use crate::camera::Player;
-use crate::collision::check_circle_collision;
-use crate::map::Map;
+use crate::world::check_circle_collision;
+use crate::world::Map;
 use crate::scripting::{self, CVarRegistry};
-use crate::ui::PlayerStats;
+use crate::hud::PlayerStats;
 use super::components::Item;
 use super::definitions::ItemDefinitions;
 

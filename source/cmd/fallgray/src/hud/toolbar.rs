@@ -1,7 +1,7 @@
 use crate::console::ConsoleState;
 use crate::game_state::GamePlayEntity;
 use crate::game_state::GameState;
-use crate::texture_loader::load_image_texture;
+use crate::rendering::load_image_texture;
 use crate::ui_styles::EntityCommandsUIExt;
 use bevy::prelude::*;
 

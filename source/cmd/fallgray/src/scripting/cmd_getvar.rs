@@ -1,5 +1,5 @@
 use super::cvars::CVarRegistry;
-use crate::ui::PlayerStats;
+use crate::hud::PlayerStats;
 use bevy::prelude::*;
 
 /// Handle the getvar command - retrieves a console variable value

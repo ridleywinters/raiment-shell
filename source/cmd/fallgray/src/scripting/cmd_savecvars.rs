@@ -1,5 +1,5 @@
 use super::cvars::CVarRegistry;
-use crate::ui::PlayerStats;
+use crate::hud::PlayerStats;
 use bevy::prelude::*;
 
 /// Handle the savecvars command - saves all console variables to data/cvars.yaml

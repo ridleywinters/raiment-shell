@@ -4,7 +4,7 @@ use bevy::mesh::{Indices, PrimitiveTopology};
 use crate::combat::WeaponDefinitions;
 use crate::game_state::GamePlayEntity;
 use crate::scripting::CVarRegistry;
-use crate::texture_loader::load_weapon_texture;
+use crate::rendering::load_weapon_texture;
 use super::components::WeaponSprite;
 
 /// Spawn weapon sprite as child of camera entity
