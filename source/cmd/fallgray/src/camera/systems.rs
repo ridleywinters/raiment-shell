@@ -1,10 +1,10 @@
 use super::mouse_look_settings::MouseLookSettings;
 use super::player::Player;
-use crate::world::PLAYER_RADIUS;
 use crate::console::ConsoleState;
 use crate::game_state::GamePlayEntity;
-use crate::world::Map;
 use crate::scripting::CVarRegistry;
+use crate::world::Map;
+use crate::world::PLAYER_RADIUS;
 use bevy::input::mouse::MouseMotion;
 use bevy::prelude::*;
 
@@ -109,24 +109,6 @@ pub fn update_camera_control_system(
         }
         if input.pressed(KeyCode::ArrowDown) {
             pitch_delta -= arrow_sensitivity * dt;
-        }
-
-        // Get current yaw from the forward direction projected onto XY plane
-        {
-            let scale = if yaw_delta.abs() > 0.0 {
-                0.25
-            } else if movement_xy.length_squared() > 0.0 {
-                0.1
-            } else {
-                0.0
-            };
-
-            let forward_3d = transform.forward().as_vec3();
-            let forward_xy = Vec2::new(forward_3d.x, forward_3d.y);
-            let yaw = forward_xy.y.atan2(forward_xy.x);
-
-            let max = scale * arrow_sensitivity * dt;
-            yaw_delta += (-yaw).clamp(-max, max);
         }
 
         // Apply smooth mouse rotation (velocity-based)
