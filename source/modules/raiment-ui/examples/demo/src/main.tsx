@@ -1,6 +1,7 @@
 import React, { JSX } from "react";
 import { createRoot } from "react-dom/client";
 import { useServerSideEvents } from "@raiment-ui";
+import { TableExample } from "./table_example.tsx";
 
 function AppWrapper({ children }: { children: React.ReactNode }): JSX.Element {
     useServerSideEvents("/api/events", (data: any) => {
@@ -16,11 +17,12 @@ function AppWrapper({ children }: { children: React.ReactNode }): JSX.Element {
     return <>{children}</>;
 }
 
-export function bootstrap(Component: () => JSX.Element): void {
+function main() {
     const el = document.getElementById("root")!;
     createRoot(el).render(
         <AppWrapper>
-            <Component />
+            <TableExample />
         </AppWrapper>,
     );
 }
+main();

@@ -5,8 +5,8 @@
         "@std/yaml": "jsr:@std/yaml@^1.0.10",
         "react": "npm:react@^19.2.0",
         "react-dom": "npm:react-dom@^19.2.0",
-        "@raiment-core": "../../raiment-core/mod.ts",
-        "@raiment-ui": "../../raiment-ui/mod.ts"
+        "@raiment-core": "../../../raiment-core/mod.ts",
+        "@raiment-ui": "../../../raiment-ui/mod.ts"
     },
 
     "compilerOptions": {

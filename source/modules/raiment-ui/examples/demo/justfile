@@ -1,7 +1,7 @@
 import "../../../../common/common.justfile"
 
 CWD := shell('pwd')
-
+ENTRYPOINT := "./src/main.tsx"
 
 #==============================================================================
 # default
@@ -27,13 +27,13 @@ build: ensure build-only
 [private]
 build-only:
     mkdir -p dist
-    cp -f ../common/public/* dist/
+    cp -f src/public/* dist/
     deno bundle \
       --unstable-raw-imports \
       --platform=browser \
       --sourcemap=inline \
       --output dist/main.bundle.js \
-      main.tsx
+      {{ENTRYPOINT}}
     date > dist/build.timestamp
 
 #==============================================================================
@@ -49,7 +49,7 @@ dev: ensure
 
 dev-client:
     watchexec \
-        --watch main.tsx \
+        --watch {{ENTRYPOINT}} \
         --watch "${REPO_ROOT}/source/modules/raiment-core/src" \
         --watch "${REPO_ROOT}/source/modules/raiment-ui/src" \
         --exts ts,tsx,html,css,png,yaml,json \

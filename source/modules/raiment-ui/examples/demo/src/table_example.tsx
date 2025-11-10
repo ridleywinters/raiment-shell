@@ -1,7 +1,6 @@
 import React, { JSX } from "react";
 import { css, Div, useCSS } from "@raiment-ui";
 import * as core from "@raiment-core";
-import { bootstrap } from "../common/bootstrap.tsx";
 
 type DashboardEntry = {
     category: string;
@@ -18,7 +17,7 @@ class Database {
     }
 }
 
-function TableExample(): JSX.Element {
+export function TableExample(): JSX.Element {
     const database = React.useMemo(() => {
         const db = new Database();
         db.add("System", "Authentication Service", 7);
@@ -102,7 +101,7 @@ function DashboardRowView({ entry }: { entry: DashboardEntry }): JSX.Element {
         ? "#FDD835"
         : entry.status <= 10
         ? "#43A047"
-        : "#43A047";
+        : "#FF00FF";
 
     return (
         <Div cl="row" sl="flex-row-center">
@@ -123,5 +122,3 @@ function DashboardRowView({ entry }: { entry: DashboardEntry }): JSX.Element {
         </Div>
     );
 }
-
-bootstrap(TableExample);
